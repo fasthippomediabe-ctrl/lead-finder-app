@@ -1,3 +1,6 @@
 streamlit
 pandas
 apify-client
+requests
+beautifulsoup4
+lxml
