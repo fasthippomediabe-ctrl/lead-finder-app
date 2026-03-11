@@ -154,17 +154,17 @@ COUNTRY_DATA = {
 }
 
 IMPORTANT_COLUMNS = [
-    "title",
-    "categoryName",
-    "address",
-    "city",
-    "state",
-    "countryCode",
-    "phone",
-    "website",
-    "totalScore",
-    "reviewsCount",
-    "url",
+    "Title",
+    "CategoryName",
+    "Address",
+    "City",
+    "State",
+    "CountryCode",
+    "Phone",
+    "Website",
+    "TotalScore",
+    "ReviewsCount",
+    "URL",
 ]
 
 st.set_page_config(page_title="Global Business Lead Finder", page_icon="🌍", layout="wide")
@@ -383,4 +383,5 @@ if run_clicked:
         csv,
         "global_lead_generation_list.csv",
         "text/csv",
+
     )
