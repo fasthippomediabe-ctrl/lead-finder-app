@@ -349,21 +349,21 @@ if run_clicked:
 
     # reorder columns
     preferred_order = [
-        "title",
-        "categoryName",
-        "address",
-        "city",
-        "state",
-        "countryCode",
-        "phone",
-        "website",
-        "totalScore",
-        "reviewsCount",
+        "Title",
+        "CategoryName",
+        "Address",
+        "City",
+        "State",
+        "CountryCode",
+        "Phone",
+        "Website",
+        "TotalScore",
+        "ReviewsCount",
         "Opportunity",
-        "selectedCountry",
-        "currency",
-        "language",
-        "url",
+        "SelectedCountry",
+        "Currency",
+        "Language",
+        "URL",
     ]
     final_columns = [c for c in preferred_order if c in df.columns]
     df = df[final_columns]
@@ -385,3 +385,4 @@ if run_clicked:
         "text/csv",
 
     )
+
