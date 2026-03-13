@@ -33,12 +33,24 @@ import time
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 from apify_client import ApifyClient
 
 # ---------------- CONFIG ----------------
 
 ACTOR_ID = "compass/crawler-google-places"
+
+STOP_WORDS = [
+    "company",
+    "service",
+    "services",
+    "store",
+    "shop",
+    "inc",
+    "llc",
+    "co",
+    "dealer",
+]
 
 EXCLUDED_BUSINESSES = [
     "amazon",
@@ -52,19 +64,15 @@ EXCLUDED_BUSINESSES = [
 
 EMAIL_REGEX = re.compile(r'([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})')
 
+HEADERS = {"User-Agent": "Mozilla/5.0"}
+
 COMMON_CONTACT_PATHS = [
     "",
     "/contact",
     "/contact-us",
-    "/contacts",
     "/about",
     "/about-us",
-    "/team",
 ]
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0"
-}
 
 # ---------------- PAGE ----------------
 
@@ -74,7 +82,7 @@ st.title("🌍 Global Business Lead Finder")
 
 industries = st.text_area(
     "Industries (one per line)",
-    "dentist\nplumber\ngym"
+    "plumber"
 )
 
 locations = st.text_area(
@@ -82,28 +90,38 @@ locations = st.text_area(
     "Austin Texas\nDallas Texas\nHouston Texas"
 )
 
-country = st.text_input(
-    "Country (optional)",
-    "United States"
-)
+country = st.text_input("Country (optional)", "United States")
 
 max_results = st.number_input("Max results per search", 1, 200, 25)
 
-min_rating = st.number_input("Minimum Rating", 0.0, 5.0, 0.0)
-max_rating = st.number_input("Maximum Rating", 0.0, 5.0, 5.0)
-
-min_reviews = st.number_input("Minimum Reviews", 0, 100000, 0)
-max_reviews = st.number_input("Maximum Reviews", 0, 100000, 100000)
-
-find_emails = st.checkbox("Find emails from websites", value=True)
-email_scan_limit = st.number_input("Max websites to scan for emails", 1, 500, 50)
+find_emails = st.checkbox("Find emails from websites", True)
+email_scan_limit = st.number_input("Max websites to scan", 1, 500, 50)
 
 run_clicked = st.button("Run Global Scraper")
+
+# ---------------- KEYWORD EXPANSION ----------------
+
+def expand_industry(industry):
+
+    industry = industry.lower()
+
+    variations = [
+        industry,
+        f"{industry} company",
+        f"{industry} service",
+        f"{industry} contractor",
+        f"local {industry}",
+        f"emergency {industry}",
+        f"residential {industry}",
+        f"commercial {industry}",
+    ]
+
+    return list(set(variations))
 
 # ---------------- EMAIL HELPERS ----------------
 
 def normalize_website(url):
-    if not url or pd.isna(url):
+    if not url:
         return ""
     if not url.startswith("http"):
         return "https://" + url
@@ -111,26 +129,23 @@ def normalize_website(url):
 
 def fetch_page(url):
     try:
-        r = requests.get(url, headers=HEADERS, timeout=10)
+        r = requests.get(url, headers=HEADERS, timeout=8)
         if r.status_code == 200:
             return r.text
     except:
         return ""
     return ""
 
-def extract_email_from_website(website):
+def extract_email_from_website(site):
 
-    website = normalize_website(website)
+    site = normalize_website(site)
 
-    if not website:
+    if not site:
         return ""
 
     for path in COMMON_CONTACT_PATHS:
 
-        if path == "":
-            url = website
-        else:
-            url = urljoin(website, path)
+        url = site if path == "" else urljoin(site, path)
 
         html = fetch_page(url)
 
@@ -159,18 +174,26 @@ if run_clicked:
     industry_list = [i.strip() for i in industries.split("\n") if i.strip()]
     location_list = [c.strip() for c in locations.split("\n") if c.strip()]
 
-    all_results = []
-
-    progress = st.progress(0)
-    job_count = 0
-    total_jobs = len(industry_list) * len(location_list)
+    expanded_industries = []
 
     for industry in industry_list:
+        expanded_industries.extend(expand_industry(industry))
+
+    expanded_industries = list(set(expanded_industries))
+
+    all_results = []
+
+    total_jobs = len(expanded_industries) * len(location_list)
+
+    progress = st.progress(0)
+    job = 0
+
+    for industry in expanded_industries:
         for location in location_list:
 
             query = f"{industry} {location} {country}"
 
-            st.write("Running:", query)
+            st.write("Searching:", query)
 
             try:
 
@@ -181,20 +204,20 @@ if run_clicked:
                     }
                 )
 
-                dataset_id = run["defaultDatasetId"]
+                dataset = run["defaultDatasetId"]
 
-                items = list(client.dataset(dataset_id).iterate_items())
+                items = list(client.dataset(dataset).iterate_items())
 
                 all_results.extend(items)
 
             except Exception as e:
                 st.warning(e)
 
-            job_count += 1
-            progress.progress(job_count / total_jobs)
+            job += 1
+            progress.progress(job / total_jobs)
 
     if not all_results:
-        st.warning("No results found")
+        st.warning("No results")
         st.stop()
 
     df = pd.DataFrame(all_results)
@@ -215,19 +238,24 @@ if run_clicked:
 
     # ---------------- INDUSTRY FILTER ----------------
 
-    industry_keywords = []
+    keywords = []
 
     for industry in industry_list:
-        industry_keywords.extend(industry.lower().split())
 
-    industry_keywords = list(set(industry_keywords))
+        words = industry.lower().split()
+
+        words = [w for w in words if w not in STOP_WORDS]
+
+        keywords.extend(words)
+
+    keywords = list(set(keywords))
 
     def is_relevant(row):
 
         name = str(row["Business Name"]).lower()
         category = str(row["Category"]).lower()
 
-        for word in industry_keywords:
+        for word in keywords:
             if word in name or word in category:
                 return True
 
@@ -235,9 +263,9 @@ if run_clicked:
 
     df = df[df.apply(is_relevant, axis=1)]
 
-    # ---------------- EXCLUDED CHAINS FILTER ----------------
+    # ---------------- REMOVE CHAINS ----------------
 
-    def remove_chains(row):
+    def remove_chain(row):
 
         name = str(row["Business Name"]).lower()
 
@@ -247,44 +275,29 @@ if run_clicked:
 
         return True
 
-    df = df[df.apply(remove_chains, axis=1)]
+    df = df[df.apply(remove_chain, axis=1)]
 
-    # ---------------- CLEAN DATA ----------------
+    df.drop_duplicates(inplace=True)
 
-    df["Rating"] = pd.to_numeric(df["Rating"], errors="coerce")
-    df["Reviews"] = pd.to_numeric(df["Reviews"], errors="coerce")
-
-    df = df[
-        (df["Rating"] >= min_rating) &
-        (df["Rating"] <= max_rating)
-    ]
-
-    df = df[
-        (df["Reviews"] >= min_reviews) &
-        (df["Reviews"] <= max_reviews)
-    ]
-
-    df = df.drop_duplicates()
-
-    # ---------------- EMAIL SCRAPER ----------------
+    # ---------------- EMAIL FINDER ----------------
 
     df["Email"] = ""
 
     if find_emails:
 
-        websites = df[df["Website"].notna()].head(email_scan_limit)
+        sites = df[df["Website"].notna()].head(email_scan_limit)
 
         email_progress = st.progress(0)
 
-        for i, idx in enumerate(websites.index):
+        for i, idx in enumerate(sites.index):
 
-            site = df.loc[idx, "Website"]
+            website = df.loc[idx, "Website"]
 
-            email = extract_email_from_website(site)
+            email = extract_email_from_website(website)
 
             df.loc[idx, "Email"] = email
 
-            email_progress.progress((i+1) / len(websites))
+            email_progress.progress((i+1)/len(sites))
 
             time.sleep(0.05)
 
@@ -309,7 +322,7 @@ if run_clicked:
     csv = df.to_csv(index=False).encode("utf-8")
 
     st.download_button(
-        "Download Lead List",
+        "Download Leads",
         csv,
         "lead_generation_with_emails.csv",
         "text/csv"
