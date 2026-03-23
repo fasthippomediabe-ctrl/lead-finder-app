@@ -506,7 +506,93 @@ if run_clicked:
             st.warning("No results found.")
             st.stop()
 
-        df = pd.DataFrame(all_results)
+        # Parse nested Angi JSON into clean columns
+        clean_rows = []
+        for item in items_raw:
+            row = {}
+
+            # Business identity
+            bi = item.get("business_identity", {})
+            if isinstance(bi, str):
+                try: bi = json.loads(bi)
+                except: bi = {}
+            row["Business Name"] = bi.get("business_name", "")
+            row["Profile URL"] = bi.get("profile_url", "")
+
+            # Contact details
+            cd = item.get("contact_details", {})
+            if isinstance(cd, str):
+                try: cd = json.loads(cd)
+                except: cd = {}
+            row["Phone"] = cd.get("phone_primary", "")
+            row["Address"] = cd.get("open_address", "")
+            row["Website"] = cd.get("website", "")
+
+            # Location
+            loc = item.get("location_details", {})
+            if isinstance(loc, str):
+                try: loc = json.loads(loc)
+                except: loc = {}
+            row["Service Area"] = loc.get("service_area", "")
+
+            # Company profile
+            cp = item.get("company_profile", {})
+            if isinstance(cp, str):
+                try: cp = json.loads(cp)
+                except: cp = {}
+            overview = cp.get("business_overview", {})
+            if isinstance(overview, str):
+                try: overview = json.loads(overview)
+                except: overview = {}
+            row["Description"] = overview.get("description", "")[:200]
+            profile_attrs = cp.get("profile_attributes", {})
+            if isinstance(profile_attrs, str):
+                try: profile_attrs = json.loads(profile_attrs)
+                except: profile_attrs = {}
+            row["In Business Since"] = profile_attrs.get("in_business_since", "")
+
+            # Ratings
+            cf = item.get("customer_feedback", {})
+            if isinstance(cf, str):
+                try: cf = json.loads(cf)
+                except: cf = {}
+            ratings = cf.get("ratings_summary", {})
+            if isinstance(ratings, str):
+                try: ratings = json.loads(ratings)
+                except: ratings = {}
+            row["Rating"] = ratings.get("overall_rating", "")
+            if row["Rating"] and isinstance(row["Rating"], float):
+                row["Rating"] = round(row["Rating"], 1)
+            row["Reviews"] = ratings.get("review_count", 0)
+
+            # Categories
+            so = item.get("service_offerings", {})
+            if isinstance(so, str):
+                try: so = json.loads(so)
+                except: so = {}
+            cats = so.get("categories", [])
+            if isinstance(cats, str):
+                try: cats = json.loads(cats)
+                except: cats = []
+            if cats and isinstance(cats, list):
+                row["Categories"] = ", ".join(c.get("name", "") for c in cats[:5] if isinstance(c, dict))
+            else:
+                row["Categories"] = ""
+
+            # Licensing
+            comp = item.get("compliance", {})
+            if isinstance(comp, str):
+                try: comp = json.loads(comp)
+                except: comp = {}
+            lic = comp.get("licensing", {})
+            if isinstance(lic, str):
+                try: lic = json.loads(lic)
+                except: lic = {}
+            row["Insured"] = lic.get("insured", False)
+
+            clean_rows.append(row)
+
+        df = pd.DataFrame(clean_rows)
 
     # ==================== HOMEADVISOR ====================
     elif source == "HomeAdvisor":
