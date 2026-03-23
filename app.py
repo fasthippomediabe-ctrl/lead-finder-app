@@ -40,7 +40,7 @@ from apify_client import ApifyClient
 
 ACTORS = {
     "Google Business Profile": "compass/crawler-google-places",
-    "Angi (Angie's List)": "babak/angi-angie-s-list-company-links-scraper",
+    "Angi (Angie's List)": "fatihtahta/angi-scraper-with-contacts",
     "HomeAdvisor": "alizarin_refrigerator-owner/homeadvisor-scraper",
 }
 
@@ -218,11 +218,31 @@ if source == "Google Business Profile":
 # --- Angi ---
 elif source == "Angi (Angie's List)":
 
-    angi_location = st.text_input("Location", "Austin, Texas")
-    angi_category = st.selectbox("Category / Service Type", ANGI_CATEGORIES, index=ANGI_CATEGORIES.index("plumbing"))
-    angi_max = st.number_input("Max listings", 1, 500, 25)
-    angi_include_reviews = st.checkbox("Include reviews", True)
-    angi_max_reviews = st.number_input("Max reviews per listing", 0, 50, 5)
+    angi_category = st.text_input("Category / Service Type", "plumber")
+    angi_city = st.text_input("City", "austin")
+
+    angi_state = st.selectbox("State", [
+        "al", "ak", "az", "ar", "ca", "co", "ct", "de", "fl", "ga",
+        "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md",
+        "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv", "nh", "nj",
+        "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc",
+        "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy",
+    ], index=42)  # tx default
+
+    angi_max = st.number_input("Max results", 1, 1000, 25)
+
+    angi_use_custom_url = st.checkbox("Use custom Angi URL instead")
+
+    if angi_use_custom_url:
+        angi_custom_url = st.text_input(
+            "Custom Angi URL",
+            "https://www.angi.com/companylist/us/nm/albuquerque/garage-builders.htm",
+        )
+    else:
+        cat_slug = angi_category.strip().lower().replace(" ", "-")
+        city_slug = angi_city.strip().lower().replace(" ", "-")
+        angi_auto_url = f"https://www.angi.com/companylist/us/{angi_state}/{city_slug}/{cat_slug}.htm"
+        st.code(angi_auto_url, language=None)
 
 # --- HomeAdvisor ---
 elif source == "HomeAdvisor":
@@ -450,23 +470,20 @@ if run_clicked:
     # ==================== ANGI ====================
     elif source == "Angi (Angie's List)":
 
-        st.write(f"Searching Angi for **{angi_category}** in **{angi_location}**...")
+        if angi_use_custom_url:
+            angi_url = angi_custom_url.strip()
+        else:
+            angi_url = angi_auto_url
+
+        st.write(f"Scraping Angi: **{angi_url}**")
         progress = st.progress(0)
 
         try:
             progress.progress(10)
             run = client.actor(ACTORS[source]).call(
                 run_input={
-                    "location": angi_location,
-                    "category": angi_category,
-                    "includeReviews": angi_include_reviews,
-                    "maxListings": int(angi_max),
-                    "maxReviews": int(angi_max_reviews),
-                    "directLinks": [],
-                    "categoryLinks": [],
-                    "zipcodes": [],
-                    "proxyConfiguration": {"useApifyProxy": True},
-                    "maxConcurrency": 100,
+                    "startUrls": [{"url": angi_url}],
+                    "maxResults": int(angi_max),
                 }
             )
             progress.progress(70)
