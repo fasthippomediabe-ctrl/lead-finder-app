@@ -19,7 +19,7 @@ def check_login():
         st.session_state["logged_in"] = False
 
     if not st.session_state["logged_in"]:
-        st.title("🔐 Lead Finder Login")
+        st.title("🔐 Angi Lead Finder Login")
         login_form()
         st.stop()
 
@@ -30,27 +30,15 @@ check_login()
 import os
 import re
 import time
+import json
 import pandas as pd
 import requests
-from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from apify_client import ApifyClient
 
 # ---------------- CONFIG ----------------
 
-ACTOR_ID = "compass/crawler-google-places"
-
-STOP_WORDS = [
-    "company",
-    "service",
-    "services",
-    "store",
-    "shop",
-    "inc",
-    "llc",
-    "co",
-    "dealer",
-]
+ACTOR_ID = "babak/angi-angie-s-list-scraper"
 
 EXCLUDED_BUSINESSES = [
     "amazon",
@@ -76,47 +64,23 @@ COMMON_CONTACT_PATHS = [
 
 # ---------------- PAGE ----------------
 
-st.set_page_config(page_title="Global Lead Finder", page_icon="🌍", layout="wide")
+st.set_page_config(page_title="Angi Lead Finder", page_icon="🔧", layout="wide")
 
-st.title("🌍 Global Business Lead Finder")
+st.title("🔧 Angi (Angie's List) Lead Finder")
 
-industries = st.text_area(
-    "Industries (one per line)",
-    "plumber"
-)
+location = st.text_input("Location", "Austin, Texas")
 
-locations = st.text_area(
-    "Cities / Locations (one per line)",
-    "Austin Texas\nDallas Texas\nHouston Texas"
-)
+category = st.text_input("Category / Service Type", "plumber")
 
-country = st.text_input("Country (optional)", "United States")
+max_listings = st.number_input("Max listings", 1, 500, 25)
 
-max_results = st.number_input("Max results per search", 1, 200, 25)
+include_reviews = st.checkbox("Include reviews", True)
+max_reviews = st.number_input("Max reviews per listing", 0, 50, 5)
 
 find_emails = st.checkbox("Find emails from websites", True)
-email_scan_limit = st.number_input("Max websites to scan", 1, 500, 50)
+email_scan_limit = st.number_input("Max websites to scan for emails", 1, 500, 50)
 
-run_clicked = st.button("Run Global Scraper")
-
-# ---------------- KEYWORD EXPANSION ----------------
-
-def expand_industry(industry):
-
-    industry = industry.lower()
-
-    variations = [
-        industry,
-        f"{industry} company",
-        f"{industry} service",
-        f"{industry} contractor",
-        f"local {industry}",
-        f"emergency {industry}",
-        f"residential {industry}",
-        f"commercial {industry}",
-    ]
-
-    return list(set(variations))
+run_clicked = st.button("Run Angi Scraper")
 
 # ---------------- EMAIL HELPERS ----------------
 
@@ -137,27 +101,38 @@ def fetch_page(url):
     return ""
 
 def extract_email_from_website(site):
-
     site = normalize_website(site)
-
     if not site:
         return ""
 
     for path in COMMON_CONTACT_PATHS:
-
         url = site if path == "" else urljoin(site, path)
-
         html = fetch_page(url)
-
         if not html:
             continue
-
         emails = EMAIL_REGEX.findall(html)
-
         if emails:
             return emails[0]
 
     return ""
+
+# ---------------- FLATTEN HELPER ----------------
+
+def flatten_record(item):
+    flat = {}
+    for key, value in item.items():
+        if isinstance(value, list):
+            flat[key] = " | ".join(
+                json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else str(v)
+                for v in value
+            )
+        elif isinstance(value, dict):
+            flat[key] = json.dumps(value, ensure_ascii=False)
+        elif value is None:
+            flat[key] = ""
+        else:
+            flat[key] = value
+    return flat
 
 # ---------------- MAIN ----------------
 
@@ -166,164 +141,130 @@ if run_clicked:
     token = os.getenv("APIFY_API_TOKEN")
 
     if not token:
-        st.error("Missing APIFY_API_TOKEN")
+        st.error("Missing APIFY_API_TOKEN environment variable.")
         st.stop()
 
     client = ApifyClient(token)
 
-    industry_list = [i.strip() for i in industries.split("\n") if i.strip()]
-    location_list = [c.strip() for c in locations.split("\n") if c.strip()]
-
-    expanded_industries = []
-
-    for industry in industry_list:
-        expanded_industries.extend(expand_industry(industry))
-
-    expanded_industries = list(set(expanded_industries))
-
-    all_results = []
-
-    total_jobs = len(expanded_industries) * len(location_list)
-
-    progress = st.progress(0)
-    job = 0
-
-    for industry in expanded_industries:
-        for location in location_list:
-
-            query = f"{industry} {location} {country}"
-
-            st.write("Searching:", query)
-
-            try:
-
-                run = client.actor(ACTOR_ID).call(
-                    run_input={
-                        "searchStringsArray": [query],
-                        "maxCrawledPlacesPerSearch": int(max_results)
-                    }
-                )
-
-                dataset = run["defaultDatasetId"]
-
-                items = list(client.dataset(dataset).iterate_items())
-
-                all_results.extend(items)
-
-            except Exception as e:
-                st.warning(e)
-
-            job += 1
-            progress.progress(job / total_jobs)
-
-    if not all_results:
-        st.warning("No results")
-        st.stop()
-
-    df = pd.DataFrame(all_results)
-
-    columns_map = {
-        "title": "Business Name",
-        "categoryName": "Category",
-        "address": "Address",
-        "phone": "Phone",
-        "website": "Website",
-        "totalScore": "Rating",
-        "reviewsCount": "Reviews",
-        "url": "Google Maps",
+    actor_input = {
+        "location": location,
+        "category": category,
+        "includeReviews": include_reviews,
+        "maxListings": int(max_listings),
+        "maxReviews": int(max_reviews),
+        "directLinks": [],
+        "categoryLinks": [],
+        "zipcodes": [],
+        "proxyConfiguration": {"useApifyProxy": True},
+        "maxConcurrency": 100,
     }
 
-    df = df[list(columns_map.keys())]
-    df.rename(columns=columns_map, inplace=True)
+    st.write(f"Searching Angi for **{category}** in **{location}**...")
 
-    # ---------------- INDUSTRY FILTER ----------------
+    progress = st.progress(0)
 
-    keywords = []
+    try:
+        progress.progress(10)
 
-    for industry in industry_list:
+        run = client.actor(ACTOR_ID).call(run_input=actor_input)
 
-        words = industry.lower().split()
+        progress.progress(70)
 
-        words = [w for w in words if w not in STOP_WORDS]
+        status = run.get("status", "UNKNOWN")
+        dataset_id = run.get("defaultDatasetId", "")
 
-        keywords.extend(words)
+        if status != "SUCCEEDED":
+            st.error(f"Actor run did not succeed (status={status}). Check the Apify console.")
+            st.stop()
 
-    keywords = list(set(keywords))
+        items_raw = list(client.dataset(dataset_id).iterate_items())
+        items_flat = [flatten_record(item) for item in items_raw]
 
-    def is_relevant(row):
+        progress.progress(90)
 
-        name = str(row["Business Name"]).lower()
-        category = str(row["Category"]).lower()
+    except Exception as e:
+        st.error(f"Scraper error: {e}")
+        st.stop()
 
-        for word in keywords:
-            if word in name or word in category:
-                return True
+    if not items_flat:
+        st.warning("No results found.")
+        st.stop()
 
-        return False
-
-    df = df[df.apply(is_relevant, axis=1)]
+    df = pd.DataFrame(items_flat)
 
     # ---------------- REMOVE CHAINS ----------------
 
     def remove_chain(row):
-
-        name = str(row["Business Name"]).lower()
-
+        name = str(row.get("name", row.get("businessName", ""))).lower()
         for bad in EXCLUDED_BUSINESSES:
             if bad in name:
                 return False
-
         return True
 
     df = df[df.apply(remove_chain, axis=1)]
-
     df.drop_duplicates(inplace=True)
 
     # ---------------- EMAIL FINDER ----------------
 
+    # Find the website column (Angi actors may use different names)
+    website_col = None
+    for col_name in ["website", "websiteUrl", "url", "Website"]:
+        if col_name in df.columns:
+            website_col = col_name
+            break
+
     df["Email"] = ""
 
-    if find_emails:
+    if find_emails and website_col:
 
-        sites = df[df["Website"].notna()].head(email_scan_limit)
+        sites = df[df[website_col].notna() & (df[website_col] != "")].head(email_scan_limit)
 
         email_progress = st.progress(0)
 
         for i, idx in enumerate(sites.index):
-
-            website = df.loc[idx, "Website"]
-
+            website = df.loc[idx, website_col]
             email = extract_email_from_website(website)
-
             df.loc[idx, "Email"] = email
-
-            email_progress.progress((i+1)/len(sites))
-
+            email_progress.progress((i + 1) / len(sites))
             time.sleep(0.05)
 
     # ---------------- OPPORTUNITY SCORE ----------------
 
     def score(row):
+        rating = row.get("rating", row.get("overallRating", 0))
+        reviews = row.get("reviewCount", row.get("numberOfReviews", 0))
 
-        if not row["Website"]:
+        try:
+            rating = float(rating) if rating else 0
+        except (ValueError, TypeError):
+            rating = 0
+
+        try:
+            reviews = int(reviews) if reviews else 0
+        except (ValueError, TypeError):
+            reviews = 0
+
+        website = row.get(website_col, "") if website_col else ""
+
+        if not website or (reviews < 10 and rating < 4.5):
             return "HIGH"
-
-        if row["Reviews"] < 30:
+        if reviews < 30:
             return "MEDIUM"
-
         return "LOW"
 
     df["Opportunity"] = df.apply(score, axis=1)
 
-    st.success(f"{len(df)} businesses found")
+    progress.progress(100)
 
-    st.dataframe(df)
+    st.success(f"{len(df)} businesses found on Angi")
+
+    st.dataframe(df, use_container_width=True)
 
     csv = df.to_csv(index=False).encode("utf-8")
 
     st.download_button(
-        "Download Leads",
+        "Download Angi Leads",
         csv,
-        "lead_generation_with_emails.csv",
-        "text/csv"
+        "angi_leads.csv",
+        "text/csv",
     )
