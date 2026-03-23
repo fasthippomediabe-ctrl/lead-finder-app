@@ -96,6 +96,58 @@ COUNTRY_DATA = {
     },
 }
 
+ANGI_CATEGORIES = [
+    "air-duct-cleaning", "animal-removal", "tv-antenna", "appliance-repair",
+    "architects", "asbestos-removal", "awnings", "remodeling-basements",
+    "basement-waterproofing", "basketball-goals", "bathtub-refinishing",
+    "biohazard-remediation", "blind-cleaning", "cabinet-makers",
+    "cabinet-refinishing", "carpet-cleaning", "carpet", "ceiling-fans",
+    "central-vacuum-cleaners", "childproofing", "chimney-caps",
+    "chimney-repair", "chimney-sweep", "cleaning", "closets",
+    "computer-repair", "concrete-driveways", "concrete-repair", "countertops",
+    "deck-maintenance", "decks-and-porches", "dock-building-repair",
+    "pet-fencing", "doors", "drain-cleaning", "drain-pipe-installation",
+    "drapery-cleaning", "driveway-gates", "driveways", "dryer-vent-cleaning",
+    "drywall", "dumpster-rental", "earthquake-retrofit", "egress",
+    "electrical", "epoxy-flooring", "excavating", "fencing", "fireplaces",
+    "firewood", "buffing-and-polishing", "floor-cleaning", "flooring",
+    "foundation-repair", "fountains", "furniture-refinishing", "garage-builders",
+    "garage-doors", "gas-logs", "gas-leak-repair", "contractor",
+    "generator-installers", "glass-block", "glass-and-mirrors",
+    "gas-grill-repair", "gutter-cleaning", "gutter-repair-replacement",
+    "handyman-service", "landscaping-hardscaping-and-pavers",
+    "hardwood-flooring", "hauling", "heating-oil-companies",
+    "holiday-decorating", "home-automation", "home-builders",
+    "energy-audit", "home-inspection", "kitchen-and-bath-remodeling",
+    "home-security-systems", "home-staging", "home-theater-systems",
+    "home-warranty-companies", "house-cleaning", "exterior-painting",
+    "hurricane-shutters", "hvac", "insulation", "interior-design",
+    "interior-painting", "wrought-iron", "lawn-irrigation", "appraisals",
+    "land-surveying", "landscaping-lighting", "appliance-sales", "landscaping",
+    "lawn-and-yard-work", "lawn-mower-repair", "lawn-fertilization-and-treatment",
+    "lead-testing-and-removal", "leaf-removal", "leather-and-vinyl-repair",
+    "lighting", "locksmiths", "mailbox-repair", "marble-and-granite",
+    "masonry", "metal-fabrication-and-restoration",
+    "remodeling-modular-and-mobile-home", "mold-testing-and-remediation",
+    "moving", "concrete-leveling", "mulch-and-topsoil", "plant-nurseries",
+    "oriental-rug-cleaning", "outdoor-kitchens", "sunroom-and-patio-remodeling",
+    "patios", "pest-control", "home-phone-service", "phone-repair",
+    "piano-moving", "plaster-plaster-repair", "playground-equipment",
+    "plumbing", "pool-and-spa-service", "swimming-pools", "pressure-washing",
+    "home-and-garage-organization", "radon-testing", "real-estate-agents",
+    "property-appraiser", "roof-cleaning", "roof-ice-and-snow-removal",
+    "roofing", "roto-tilling", "satellite-tv-service", "screen-repair",
+    "septic-tank", "sewer-cleaning", "siding", "skylights",
+    "small-appliance-repair", "snow-removal", "solar-panels",
+    "concrete-stamped-decorative", "stone-and-gravel", "structural-engineering",
+    "stucco", "ceramic-tile", "garbage-collection", "tree-service",
+    "upholstering", "upholstery-cleaning", "wallpapering",
+    "wallpaper-removal", "water-and-smoke-damage", "water-heaters",
+    "water-softeners", "welding", "wells-and-pumps", "window-cleaning",
+    "windows", "hurricane-film", "window-tinting", "window-treatments",
+    "woodworking",
+]
+
 EXCLUDED_BUSINESSES = [
     "amazon",
     "walmart",
@@ -167,7 +219,7 @@ if source == "Google Business Profile":
 elif source == "Angi (Angie's List)":
 
     angi_location = st.text_input("Location", "Austin, Texas")
-    angi_category = st.text_input("Category / Service Type", "plumber")
+    angi_category = st.selectbox("Category / Service Type", ANGI_CATEGORIES, index=ANGI_CATEGORIES.index("plumbing"))
     angi_max = st.number_input("Max listings", 1, 500, 25)
     angi_include_reviews = st.checkbox("Include reviews", True)
     angi_max_reviews = st.number_input("Max reviews per listing", 0, 50, 5)
