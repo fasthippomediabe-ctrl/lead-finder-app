@@ -40,7 +40,7 @@ from apify_client import ApifyClient
 
 ACTORS = {
     "Google Business Profile": "compass/crawler-google-places",
-    "Angi (Angie's List)": "babak/angi-angie-s-list-scraper",
+    "Angi (Angie's List)": "babak/angi-angie-s-list-company-links-scraper",
     "HomeAdvisor": "alizarin_refrigerator-owner/homeadvisor-scraper",
 }
 
