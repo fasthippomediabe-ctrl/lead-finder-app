@@ -231,18 +231,16 @@ elif source == "Angi (Angie's List)":
 
     angi_max = st.number_input("Max results", 1, 1000, 25)
 
-    angi_use_custom_url = st.checkbox("Use custom Angi URL instead")
+    cat_slug = angi_category.strip().lower().replace(" ", "-")
+    city_slug = angi_city.strip().lower().replace(" ", "-")
+    angi_auto_url = f"https://www.angi.com/companylist/us/{angi_state}/{city_slug}/{cat_slug}.htm"
+    st.caption(f"Search URL: {angi_auto_url}")
 
-    if angi_use_custom_url:
+    with st.expander("Advanced: Use custom URL"):
         angi_custom_url = st.text_input(
-            "Custom Angi URL",
-            "https://www.angi.com/companylist/us/nm/albuquerque/garage-builders.htm",
+            "Paste an Angi URL directly (leave blank to use auto-generated URL above)",
+            "",
         )
-    else:
-        cat_slug = angi_category.strip().lower().replace(" ", "-")
-        city_slug = angi_city.strip().lower().replace(" ", "-")
-        angi_auto_url = f"https://www.angi.com/companylist/us/{angi_state}/{city_slug}/{cat_slug}.htm"
-        st.code(angi_auto_url, language=None)
 
 # --- HomeAdvisor ---
 elif source == "HomeAdvisor":
@@ -258,19 +256,16 @@ elif source == "HomeAdvisor":
         "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
     ], index=42)  # TX default
 
-    ha_use_custom_url = st.checkbox("Use custom URL instead")
+    cat_slug = ha_category.strip().replace(" ", "-")
+    city_slug = ha_city.strip().replace(" ", "-")
+    ha_auto_url = f"https://www.homeadvisor.com/c.{cat_slug}.{city_slug}.{ha_state}.html"
+    st.caption(f"Search URL: {ha_auto_url}")
 
-    if ha_use_custom_url:
+    with st.expander("Advanced: Use custom URL"):
         ha_custom_url = st.text_input(
-            "Custom HomeAdvisor URL",
-            "https://www.homeadvisor.com/c.General-Contractor.Austin.TX.-12003807.html",
+            "Paste a HomeAdvisor URL directly (leave blank to use auto-generated URL above)",
+            "",
         )
-    else:
-        # Auto-build URL from category + city + state
-        cat_slug = ha_category.strip().replace(" ", "-")
-        city_slug = ha_city.strip().replace(" ", "-")
-        ha_auto_url = f"https://www.homeadvisor.com/c.{cat_slug}.{city_slug}.{ha_state}.html"
-        st.code(ha_auto_url, language=None)
 
 # ---------------- RUN BUTTON ----------------
 
@@ -470,10 +465,7 @@ if run_clicked:
     # ==================== ANGI ====================
     elif source == "Angi (Angie's List)":
 
-        if angi_use_custom_url:
-            angi_url = angi_custom_url.strip()
-        else:
-            angi_url = angi_auto_url
+        angi_url = angi_custom_url.strip() if angi_custom_url.strip() else angi_auto_url
 
         st.write(f"Scraping Angi: **{angi_url}**")
         progress = st.progress(0)
@@ -597,10 +589,8 @@ if run_clicked:
     # ==================== HOMEADVISOR ====================
     elif source == "HomeAdvisor":
 
-        if ha_use_custom_url:
-            url_list = [ha_custom_url.strip()]
-        else:
-            url_list = [ha_auto_url]
+        ha_url = ha_custom_url.strip() if ha_custom_url.strip() else ha_auto_url
+        url_list = [ha_url]
 
         if not url_list or not url_list[0]:
             st.warning("Please enter a valid HomeAdvisor URL or fill in category/city/state.")
