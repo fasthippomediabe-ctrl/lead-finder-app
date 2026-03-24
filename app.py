@@ -239,15 +239,16 @@ elif source == "Angi (Angie's List)":
     st.markdown("**Option 1:** Use the auto-generated URL below (works for most searches)")
     st.code(angi_auto_url, language=None)
 
-    st.markdown("**Option 2:** Search on Angi directly for more accurate results, then paste the URL")
-    angi_search_query = f"{angi_category} {angi_city}"
-    angi_search_url = f"https://www.angi.com/search?query={angi_search_query.replace(' ', '+')}"
-    st.link_button("Search on Angi.com", angi_search_url)
+    st.markdown("**Option 2:** Browse Angi's company list for your area, then paste the URL")
+    st.markdown(f"[Browse Angi company lists for {angi_city.title()}](https://www.angi.com/companylist/us/{angi_state}/{city_slug}/)")
+    st.caption("Find the right category page and copy the URL from your browser.")
 
     angi_custom_url = st.text_input(
-        "Paste URL from Angi here (leave blank to use auto-generated URL)",
+        "Paste company list URL from Angi here (leave blank to use auto-generated URL)",
         "",
     )
+    if angi_custom_url and "/companylist/" not in angi_custom_url:
+        st.warning("This URL looks like a search page, not a company list page. The scraper needs a URL containing '/companylist/' (e.g. angi.com/companylist/us/tx/austin/plumber.htm)")
 
 # --- HomeAdvisor ---
 elif source == "HomeAdvisor":
@@ -271,15 +272,16 @@ elif source == "HomeAdvisor":
     st.markdown("**Option 1:** Use the auto-generated URL below (may not always match exact category)")
     st.code(ha_auto_url, language=None)
 
-    st.markdown("**Option 2:** Search on HomeAdvisor directly for accurate results, then paste the URL")
-    ha_search_query = f"{ha_category} {ha_city} {ha_state}"
-    ha_search_url = f"https://www.homeadvisor.com/rated.{cat_slug}.{city_slug}.{ha_state}.html"
-    st.link_button("Search on HomeAdvisor.com", ha_search_url)
+    st.markdown("**Option 2:** Browse HomeAdvisor for your area, then paste the URL")
+    st.markdown(f"[Browse HomeAdvisor for {ha_city}](https://www.homeadvisor.com/c.{city_slug}.{ha_state}.html)")
+    st.caption("Find the right category page and copy the URL from your browser.")
 
     ha_custom_url = st.text_input(
         "Paste URL from HomeAdvisor here (leave blank to use auto-generated URL)",
         "",
     )
+    if ha_custom_url and "homeadvisor.com" not in ha_custom_url:
+        st.warning("This doesn't look like a HomeAdvisor URL. Please paste a URL from homeadvisor.com.")
 
 # ---------------- RUN BUTTON ----------------
 
