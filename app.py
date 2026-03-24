@@ -234,13 +234,20 @@ elif source == "Angi (Angie's List)":
     cat_slug = angi_category.strip().lower().replace(" ", "-")
     city_slug = angi_city.strip().lower().replace(" ", "-")
     angi_auto_url = f"https://www.angi.com/companylist/us/{angi_state}/{city_slug}/{cat_slug}.htm"
-    st.caption(f"Search URL: {angi_auto_url}")
 
-    with st.expander("Advanced: Use custom URL"):
-        angi_custom_url = st.text_input(
-            "Paste an Angi URL directly (leave blank to use auto-generated URL above)",
-            "",
-        )
+    st.markdown("---")
+    st.markdown("**Option 1:** Use the auto-generated URL below (works for most searches)")
+    st.code(angi_auto_url, language=None)
+
+    st.markdown("**Option 2:** Search on Angi directly for more accurate results, then paste the URL")
+    angi_search_query = f"{angi_category} {angi_city}"
+    angi_search_url = f"https://www.angi.com/search?query={angi_search_query.replace(' ', '+')}"
+    st.link_button("Search on Angi.com", angi_search_url)
+
+    angi_custom_url = st.text_input(
+        "Paste URL from Angi here (leave blank to use auto-generated URL)",
+        "",
+    )
 
 # --- HomeAdvisor ---
 elif source == "HomeAdvisor":
@@ -259,13 +266,20 @@ elif source == "HomeAdvisor":
     cat_slug = ha_category.strip().replace(" ", "-")
     city_slug = ha_city.strip().replace(" ", "-")
     ha_auto_url = f"https://www.homeadvisor.com/c.{cat_slug}.{city_slug}.{ha_state}.html"
-    st.caption(f"Search URL: {ha_auto_url}")
 
-    with st.expander("Advanced: Use custom URL"):
-        ha_custom_url = st.text_input(
-            "Paste a HomeAdvisor URL directly (leave blank to use auto-generated URL above)",
-            "",
-        )
+    st.markdown("---")
+    st.markdown("**Option 1:** Use the auto-generated URL below (may not always match exact category)")
+    st.code(ha_auto_url, language=None)
+
+    st.markdown("**Option 2:** Search on HomeAdvisor directly for accurate results, then paste the URL")
+    ha_search_query = f"{ha_category} {ha_city} {ha_state}"
+    ha_search_url = f"https://www.homeadvisor.com/rated.{cat_slug}.{city_slug}.{ha_state}.html"
+    st.link_button("Search on HomeAdvisor.com", ha_search_url)
+
+    ha_custom_url = st.text_input(
+        "Paste URL from HomeAdvisor here (leave blank to use auto-generated URL)",
+        "",
+    )
 
 # ---------------- RUN BUTTON ----------------
 
