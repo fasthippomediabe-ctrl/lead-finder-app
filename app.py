@@ -217,7 +217,11 @@ if source == "Google Business Profile":
 # --- Angi ---
 elif source == "Angi (Angie's List)":
 
-    angi_category = st.text_input("Category / Service Type", "plumber")
+    angi_category = st.selectbox(
+        "Category / Service Type",
+        sorted(ANGI_CATEGORIES),
+        index=sorted(ANGI_CATEGORIES).index("plumbing"),
+    )
     angi_city = st.text_input("City", "austin")
 
     angi_state = st.selectbox("State", [
@@ -230,7 +234,7 @@ elif source == "Angi (Angie's List)":
 
     angi_max = st.number_input("Max results", 1, 1000, 25)
 
-    cat_slug = angi_category.strip().lower().replace(" ", "-")
+    cat_slug = angi_category
     city_slug = angi_city.strip().lower().replace(" ", "-")
     angi_auto_url = f"https://www.angi.com/companylist/us/{angi_state}/{city_slug}/{cat_slug}.htm"
 
