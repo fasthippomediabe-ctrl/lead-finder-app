@@ -187,6 +187,8 @@ st.divider()
 
 # ---------------- SHARED: EMAIL OPTIONS ----------------
 
+st.sidebar.markdown(f"[View Scrape History (Google Sheets)](https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/)")
+st.sidebar.divider()
 find_emails = st.sidebar.checkbox("Find emails from websites", True)
 email_scan_limit = st.sidebar.number_input("Max websites to scan for emails", 1, 500, 50)
 
