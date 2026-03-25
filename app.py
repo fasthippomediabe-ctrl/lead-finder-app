@@ -520,24 +520,33 @@ if run_clicked:
 
         df = pd.DataFrame(all_results)
 
-        # Filter columns
-        important = [
-            "title", "categoryName", "address", "city", "state",
-            "countryCode", "phone", "website", "totalScore",
-            "reviewsCount", "url",
-        ]
-        available = [c for c in important if c in df.columns]
+        # Filter and rename columns
+        column_rename = {
+            "title": "Business Name",
+            "categoryName": "Category",
+            "address": "Address",
+            "city": "City",
+            "state": "State",
+            "countryCode": "Country",
+            "phone": "Phone",
+            "website": "Website",
+            "totalScore": "Rating",
+            "reviewsCount": "Reviews",
+            "url": "Google Maps URL",
+        }
+        available = [c for c in column_rename.keys() if c in df.columns]
         if available:
             df = df[available]
+            df.rename(columns=column_rename, inplace=True)
 
         # Apply rating/review filters
-        if "totalScore" in df.columns:
-            df["totalScore"] = pd.to_numeric(df["totalScore"], errors="coerce")
-            df = df[(df["totalScore"] >= min_rating) & (df["totalScore"] <= max_rating)]
+        if "Rating" in df.columns:
+            df["Rating"] = pd.to_numeric(df["Rating"], errors="coerce")
+            df = df[(df["Rating"] >= min_rating) & (df["Rating"] <= max_rating)]
 
-        if "reviewsCount" in df.columns:
-            df["reviewsCount"] = pd.to_numeric(df["reviewsCount"], errors="coerce").fillna(0)
-            df = df[(df["reviewsCount"] >= min_reviews) & (df["reviewsCount"] <= max_reviews)]
+        if "Reviews" in df.columns:
+            df["Reviews"] = pd.to_numeric(df["Reviews"], errors="coerce").fillna(0)
+            df = df[(df["Reviews"] >= min_reviews) & (df["Reviews"] <= max_reviews)]
 
     # ==================== ANGI ====================
     elif source == "Angi (Angie's List)":
