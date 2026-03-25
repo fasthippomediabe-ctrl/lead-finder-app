@@ -219,9 +219,16 @@ elif source == "Angi (Angie's List)":
 
     angi_category = st.selectbox(
         "Category / Service Type",
-        sorted(ANGI_CATEGORIES),
-        index=sorted(ANGI_CATEGORIES).index("plumbing"),
+        ["-- Type my own --"] + sorted(ANGI_CATEGORIES),
+        index=sorted(ANGI_CATEGORIES).index("plumbing") + 1,
     )
+    if angi_category == "-- Type my own --":
+        angi_category_custom = st.text_input(
+            "Enter category slug (e.g. 'plumbing', 'garage-builders')",
+            "",
+        )
+        angi_category = angi_category_custom.strip().lower().replace(" ", "-") if angi_category_custom.strip() else ""
+
     angi_city = st.text_input("City", "austin")
 
     angi_state = st.selectbox("State", [
@@ -405,8 +412,16 @@ if run_clicked:
         progress = st.progress(0)
         job_count = 0
 
+        stop_placeholder = st.empty()
+        stopped = False
+
         for industry in industry_list:
             for city in city_list:
+                if stop_placeholder.button("Stop Scraping", key=f"stop_{job_count}"):
+                    stopped = True
+                    st.warning(f"Stopped after {job_count} of {total_jobs} searches.")
+                    break
+
                 query = f"{industry} {city}"
                 st.write("Searching:", query)
 
@@ -426,6 +441,10 @@ if run_clicked:
 
                 job_count += 1
                 progress.progress(job_count / total_jobs)
+            if stopped:
+                break
+
+        stop_placeholder.empty()
 
         if not all_results:
             st.warning("No results found.")
@@ -466,7 +485,8 @@ if run_clicked:
                 run_input={
                     "startUrls": [{"url": angi_url}],
                     "maxResults": int(angi_max),
-                }
+                },
+                timeout_secs=300,
             )
             progress.progress(70)
 
