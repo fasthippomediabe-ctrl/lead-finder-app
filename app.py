@@ -212,7 +212,12 @@ if source == "Google Business Profile":
 
     custom_city = st.text_input("Optional custom city/location", "")
 
-    max_results = st.number_input("Max results per search", 1, 200, 10)
+    gbp_search_all = st.checkbox("Search all available listings", False)
+    if gbp_search_all:
+        max_results = 200
+        st.caption("Will scrape up to 200 results per search (Apify max). This will use more credits.")
+    else:
+        max_results = st.number_input("Max results per search", 1, 200, 10)
 
     min_rating = st.number_input("Minimum Rating", 0.0, 5.0, 0.0, 0.1)
     max_rating = st.number_input("Maximum Rating", 0.0, 5.0, 5.0, 0.1)
@@ -245,7 +250,12 @@ elif source == "Angi (Angie's List)":
         "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy",
     ], index=42)  # tx default
 
-    angi_max = st.number_input("Max results", 1, 1000, 25)
+    angi_search_all = st.checkbox("Search all available listings", False)
+    if angi_search_all:
+        angi_max = 1000
+        st.caption("Will scrape all available listings (up to 1000). This will use more credits.")
+    else:
+        angi_max = st.number_input("Max results", 1, 1000, 25)
     st.caption("Note: The Angi actor may scrape more results than requested. Cost is based on what the actor scrapes, not what is displayed.")
 
     cat_slug = angi_category
