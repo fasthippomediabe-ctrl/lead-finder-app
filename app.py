@@ -235,15 +235,19 @@ elif source == "Angi (Angie's List)":
     angi_auto_url = f"https://www.angi.com/companylist/us/{angi_state}/{city_slug}/{cat_slug}.htm"
 
     st.markdown("---")
-    st.markdown("**Option 1:** Use the auto-generated URL below (works for most searches)")
     st.code(angi_auto_url, language=None)
 
-    st.markdown("**Option 2:** Browse Angi's company list for your area, then paste the URL")
-    st.markdown(f"[Browse Angi company lists for {angi_city.title()}](https://www.angi.com/companylist/us/{angi_state}/{city_slug}/)")
-    st.caption("Find the right category page and copy the URL from your browser.")
+    st.info(
+        "**Note:** Angi scraping may not work for all cities/categories. "
+        "The URL above is auto-generated — if it returns no results, try these steps:\n\n"
+        "1. Go to [angi.com](https://www.angi.com) and search for your service + city\n"
+        "2. Click on a category from the results (e.g. 'Plumbing Services')\n"
+        "3. You should land on a page like `angi.com/companylist/us/ny/new-york/plumbing.htm`\n"
+        "4. Copy that URL and paste it below"
+    )
 
     angi_custom_url = st.text_input(
-        "Paste company list URL from Angi here (leave blank to use auto-generated URL)",
+        "Paste Angi company list URL here (leave blank to use auto-generated URL)",
         "",
     )
     if angi_custom_url and "/companylist/" not in angi_custom_url:
