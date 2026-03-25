@@ -727,6 +727,23 @@ if run_clicked:
     df = add_emails(df, website_col)
     df = add_opportunity_score(df, website_col)
 
+    # Save to session state so results persist across reruns
+    st.session_state["last_results"] = df
+    st.session_state["last_source"] = source
+
+    # Build search info for history
+    if source == "Google Business Profile":
+        st.session_state["last_search_info"] = f"{industries.split(chr(10))[0]} in {city_list[0] if city_list else 'unknown'}"
+    else:
+        st.session_state["last_search_info"] = f"{angi_category} in {angi_city}"
+
+# ---------------- DISPLAY RESULTS (persists across reruns) ----------------
+
+if "last_results" in st.session_state:
+    df = st.session_state["last_results"]
+    source_display = st.session_state.get("last_source", "")
+    search_info = st.session_state.get("last_search_info", "")
+
     # ---------------- DUPLICATE DETECTION ----------------
 
     def check_duplicates(df):
@@ -775,7 +792,7 @@ if run_clicked:
 
     # ---------------- RESULTS DISPLAY ----------------
 
-    st.success(f"✅ {len(df)} businesses found from {source}")
+    st.success(f"✅ {len(df)} businesses found from {source_display}")
 
     # Filter results
     st.subheader("Filter Results")
@@ -826,26 +843,22 @@ if run_clicked:
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
-    # Build search info for history
-    if source == "Google Business Profile":
-        search_info = f"{industries.split(chr(10))[0]} in {city_list[0] if city_list else 'unknown'}"
-    else:
-        search_info = f"{angi_category} in {angi_city}"
+    # Save to Google Sheets (only on fresh scrape, not on filter rerun)
+    if "last_saved" not in st.session_state or st.session_state.get("last_saved") != id(df):
+        save_to_google_sheets(df, source_display, search_info)
+        st.session_state["last_saved"] = id(df)
 
-    # Save to Google Sheets
-    save_to_google_sheets(df, source, search_info)
+        # Save to session history
+        if "scrape_history" not in st.session_state:
+            st.session_state["scrape_history"] = []
 
-    # Save to session history
-    if "scrape_history" not in st.session_state:
-        st.session_state["scrape_history"] = []
-
-    st.session_state["scrape_history"].append({
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "source": source,
-        "results": len(df),
-        "csv": csv,
-        "filename": f"{filename_base}.csv",
-    })
+        st.session_state["scrape_history"].append({
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "source": source_display,
+            "results": len(df),
+            "csv": csv,
+            "filename": f"{filename_base}.csv",
+        })
 
 # ---------------- SCRAPE HISTORY ----------------
 
