@@ -1,6 +1,13 @@
 import streamlit as st
 
-# ---------------- LOGIN ----------------
+# ---------------- USER ACCOUNTS ----------------
+
+USERS = {
+    "boss": {"password": "leadfinder123", "role": "admin"},
+    "bryan": {"password": "bryan2024", "role": "admin"},
+    "user1": {"password": "user1pass", "role": "user"},
+    "user2": {"password": "user2pass", "role": "user"},
+}
 
 def check_login():
     def login_form():
@@ -10,8 +17,11 @@ def check_login():
             submit = st.form_submit_button("Login")
 
             if submit:
-                if username == "boss" and password == "leadfinder123":
+                if username in USERS and USERS[username]["password"] == password:
                     st.session_state["logged_in"] = True
+                    st.session_state["username"] = username
+                    st.session_state["role"] = USERS[username]["role"]
+                    st.rerun()
                 else:
                     st.error("Invalid username or password")
 
@@ -19,7 +29,7 @@ def check_login():
         st.session_state["logged_in"] = False
 
     if not st.session_state["logged_in"]:
-        st.title("🔐 Lead Finder Login")
+        st.title("Lead Finder Login")
         login_form()
         st.stop()
 
@@ -178,6 +188,48 @@ COMMON_CONTACT_PATHS = [
 st.set_page_config(page_title="Lead Finder", page_icon="🌍", layout="wide")
 
 st.title("🌍 All-in-One Lead Finder")
+
+# ---------------- SIDEBAR: USER + TOOLS ----------------
+
+st.sidebar.markdown(f"Logged in as: **{st.session_state.get('username', '')}** ({st.session_state.get('role', '')})")
+if st.sidebar.button("Logout"):
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
+
+st.sidebar.divider()
+
+# Apify credit usage tracker
+def get_apify_balance():
+    token = os.getenv("APIFY_API_TOKEN")
+    if not token:
+        return None
+    try:
+        r = requests.get(
+            "https://api.apify.com/v2/users/me",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5,
+        )
+        if r.status_code == 200:
+            data = r.json().get("data", {})
+            plan = data.get("plan", {})
+            usage = data.get("usage", {})
+            return {
+                "plan": plan.get("id", "Unknown"),
+                "monthly_usage_usd": usage.get("monthlyUsageUsd", 0),
+            }
+    except:
+        pass
+    return None
+
+balance = get_apify_balance()
+if balance:
+    st.sidebar.metric("Apify Monthly Usage", f"${balance['monthly_usage_usd']:.2f}")
+    st.sidebar.caption(f"Plan: {balance['plan']}")
+else:
+    st.sidebar.caption("Apify balance: not available")
+
+st.sidebar.divider()
 
 # ---------------- SOURCE SELECTOR ----------------
 
@@ -704,20 +756,104 @@ if run_clicked:
     df = add_emails(df, website_col)
     df = add_opportunity_score(df, website_col)
 
+    # ---------------- DUPLICATE DETECTION ----------------
+
+    def check_duplicates(df):
+        """Check Google Sheets for businesses already scraped."""
+        gc = get_gsheet_client()
+        if not gc:
+            return df
+        try:
+            sh = gc.open_by_key(SPREADSHEET_ID)
+            existing_names = set()
+            for ws in sh.worksheets()[1:]:  # skip history log tab
+                try:
+                    records = ws.get_all_values()
+                    if records:
+                        header = records[0]
+                        name_idx = None
+                        for i, h in enumerate(header):
+                            if h.lower() in ["business name", "title", "name"]:
+                                name_idx = i
+                                break
+                        if name_idx is not None:
+                            for row in records[1:]:
+                                if name_idx < len(row) and row[name_idx]:
+                                    existing_names.add(row[name_idx].strip().lower())
+                except:
+                    continue
+
+            if existing_names:
+                name_col = None
+                for col in ["Business Name", "title", "name"]:
+                    if col in df.columns:
+                        name_col = col
+                        break
+                if name_col:
+                    df["Duplicate"] = df[name_col].apply(
+                        lambda x: "Yes" if str(x).strip().lower() in existing_names else "No"
+                    )
+                    dup_count = (df["Duplicate"] == "Yes").sum()
+                    if dup_count > 0:
+                        st.warning(f"Found {dup_count} businesses already in previous scrapes (marked as 'Duplicate: Yes')")
+        except Exception as e:
+            st.caption(f"Could not check duplicates: {e}")
+        return df
+
+    df = check_duplicates(df)
+
+    # ---------------- RESULTS DISPLAY ----------------
+
     st.success(f"✅ {len(df)} businesses found from {source}")
 
-    st.dataframe(df, use_container_width=True)
+    # Filter results
+    st.subheader("Filter Results")
+    filter_col1, filter_col2 = st.columns(2)
+    with filter_col1:
+        search_filter = st.text_input("Search by name, address, or category", "", key="filter_search")
+    with filter_col2:
+        if "Duplicate" in df.columns:
+            dup_filter = st.selectbox("Show duplicates", ["All", "New only", "Duplicates only"], key="filter_dup")
+        else:
+            dup_filter = "All"
 
-    csv = df.to_csv(index=False).encode("utf-8")
+    filtered_df = df.copy()
+    if search_filter:
+        mask = filtered_df.apply(lambda row: search_filter.lower() in str(row.values).lower(), axis=1)
+        filtered_df = filtered_df[mask]
+    if dup_filter == "New only" and "Duplicate" in filtered_df.columns:
+        filtered_df = filtered_df[filtered_df["Duplicate"] == "No"]
+    elif dup_filter == "Duplicates only" and "Duplicate" in filtered_df.columns:
+        filtered_df = filtered_df[filtered_df["Duplicate"] == "Yes"]
 
-    filename = source.lower().replace(" ", "_").replace("(", "").replace(")", "") + "_leads.csv"
+    st.caption(f"Showing {len(filtered_df)} of {len(df)} results")
+    st.dataframe(filtered_df, use_container_width=True)
 
-    st.download_button(
-        "📥 Download Leads CSV",
-        csv,
-        filename,
-        "text/csv",
-    )
+    # ---------------- DOWNLOAD OPTIONS ----------------
+
+    csv = filtered_df.to_csv(index=False).encode("utf-8")
+    filename_base = source.lower().replace(" ", "_").replace("(", "").replace(")", "") + "_leads"
+
+    dl_col1, dl_col2 = st.columns(2)
+    with dl_col1:
+        st.download_button(
+            "📥 Download CSV",
+            csv,
+            f"{filename_base}.csv",
+            "text/csv",
+        )
+    with dl_col2:
+        # Excel export
+        from io import BytesIO
+        excel_buffer = BytesIO()
+        filtered_df.to_excel(excel_buffer, index=False, engine="openpyxl")
+        excel_buffer.seek(0)
+        st.download_button(
+            "📥 Download Excel",
+            excel_buffer,
+            f"{filename_base}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
 
     # Build search info for history
     if source == "Google Business Profile":
@@ -737,7 +873,7 @@ if run_clicked:
         "source": source,
         "results": len(df),
         "csv": csv,
-        "filename": filename,
+        "filename": f"{filename_base}.csv",
     })
 
 # ---------------- SCRAPE HISTORY ----------------
