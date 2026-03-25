@@ -251,8 +251,8 @@ elif source == "Angi (Angie's List)":
     st.info(
         "**Note:** Angi scraping may not work for all cities/categories. "
         "The URL above is auto-generated — if it returns no results, try these steps:\n\n"
-        "1. Go to [angi.com](https://www.angi.com) and search for your service + city\n"
-        "2. Click on a category from the results (e.g. 'Plumbing Services')\n"
+        f"1. Browse [angi.com/companylist/us/{angi_state}/](https://www.angi.com/companylist/us/{angi_state}/) to find your city and category\n"
+        "2. Click on your city, then select a category (e.g. 'Plumbing Services')\n"
         "3. You should land on a page like `angi.com/companylist/us/ny/new-york/plumbing.htm`\n"
         "4. Copy that URL and paste it below"
     )
