@@ -199,53 +199,7 @@ if st.sidebar.button("Logout"):
 
 st.sidebar.divider()
 
-# Apify credit usage tracker
-def get_apify_balance():
-    token = os.getenv("APIFY_API_TOKEN")
-    if not token:
-        return None
-    try:
-        r = requests.get(
-            "https://api.apify.com/v2/users/me/usage/monthly",
-            params={"token": token},
-            timeout=5,
-        )
-        if r.status_code == 200:
-            data = r.json().get("data", {})
-            usage_usd = data.get("usageTotalUsd", 0)
-            limit_usd = data.get("planTotalLimitUsd", 0)
-            return {"usage_usd": usage_usd, "limit_usd": limit_usd}
-    except:
-        pass
-    # Fallback: try /users/me
-    try:
-        r = requests.get(
-            "https://api.apify.com/v2/users/me",
-            params={"token": token},
-            timeout=5,
-        )
-        if r.status_code == 200:
-            data = r.json().get("data", {})
-            plan = data.get("plan", {})
-            return {
-                "usage_usd": data.get("usageTotalUsd", 0),
-                "limit_usd": plan.get("monthlyUsageLimitUsd", 0),
-            }
-    except:
-        pass
-    return None
-
-balance = get_apify_balance()
-if balance:
-    usage = balance["usage_usd"]
-    limit = balance["limit_usd"]
-    if limit > 0:
-        st.sidebar.metric("Apify Usage", f"${usage:.2f} / ${limit:.2f}")
-    else:
-        st.sidebar.metric("Apify Usage", f"${usage:.2f}")
-else:
-    st.sidebar.caption("Apify balance: not available")
-
+st.sidebar.markdown("[Check Apify Usage & Billing](https://console.apify.com/billing)")
 st.sidebar.divider()
 
 # ---------------- SOURCE SELECTOR ----------------
