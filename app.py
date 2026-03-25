@@ -33,10 +33,14 @@ import time
 import json
 import pandas as pd
 import requests
+from datetime import datetime
 from urllib.parse import urljoin
 from apify_client import ApifyClient
+import gspread
 
 # ---------------- CONFIG ----------------
+
+SPREADSHEET_ID = "1oksMAwVZNeuf1EIRYz9EXoli9C1pkUF4KYrunRoZQ7A"
 
 ACTORS = {
     "Google Business Profile": "compass/crawler-google-places",
@@ -268,6 +272,69 @@ elif source == "Angi (Angie's List)":
 # ---------------- RUN BUTTON ----------------
 
 run_clicked = st.button("🚀 Run Scraper")
+
+# ---------------- GOOGLE SHEETS ----------------
+
+def get_gsheet_client():
+    """Connect to Google Sheets using service account from Streamlit secrets or env."""
+    try:
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        gc = gspread.service_account_from_dict(creds_dict)
+        return gc
+    except Exception:
+        pass
+    # Fallback: try JSON file path from env
+    creds_path = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if creds_path and os.path.exists(creds_path):
+        gc = gspread.service_account(filename=creds_path)
+        return gc
+    return None
+
+def save_to_google_sheets(df, source, search_info=""):
+    """Save scrape results to Google Sheets: adds a history log entry + a new data tab."""
+    gc = get_gsheet_client()
+    if not gc:
+        st.warning("Google Sheets not configured — results not saved to cloud.")
+        return
+
+    try:
+        sh = gc.open_by_key(SPREADSHEET_ID)
+    except Exception as e:
+        st.warning(f"Could not open Google Sheet: {e}")
+        return
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    tab_name = f"{source[:3]} - {search_info[:20]} - {datetime.now().strftime('%m/%d %H:%M')}"
+    # Sheet tab names max 100 chars
+    tab_name = tab_name[:100]
+
+    # --- Create data tab ---
+    try:
+        clean_df = df.copy()
+        # Convert all values to strings to avoid serialization issues
+        for col in clean_df.columns:
+            clean_df[col] = clean_df[col].astype(str)
+
+        ws = sh.add_worksheet(title=tab_name, rows=len(clean_df) + 1, cols=len(clean_df.columns))
+        ws.update([clean_df.columns.tolist()] + clean_df.values.tolist())
+    except Exception as e:
+        st.warning(f"Could not create data tab: {e}")
+        return
+
+    # --- Update history log (first sheet) ---
+    try:
+        history_ws = sh.sheet1
+        # Check if header exists
+        existing = history_ws.get_all_values()
+        if not existing:
+            history_ws.update("A1:E1", [["Timestamp", "Source", "Search", "Results", "Tab Name"]])
+
+        next_row = len(existing) + 1
+        history_ws.update(f"A{next_row}:E{next_row}", [[timestamp, source, search_info, len(df), tab_name]])
+    except Exception as e:
+        st.warning(f"Could not update history log: {e}")
+
+    st.success(f"Saved to Google Sheets tab: **{tab_name}**")
 
 # ---------------- HELPERS ----------------
 
@@ -630,3 +697,50 @@ if run_clicked:
         filename,
         "text/csv",
     )
+
+    # Build search info for history
+    if source == "Google Business Profile":
+        search_info = f"{industries.split(chr(10))[0]} in {city_list[0] if city_list else 'unknown'}"
+    else:
+        search_info = f"{angi_category} in {angi_city}"
+
+    # Save to Google Sheets
+    save_to_google_sheets(df, source, search_info)
+
+    # Save to session history
+    if "scrape_history" not in st.session_state:
+        st.session_state["scrape_history"] = []
+
+    st.session_state["scrape_history"].append({
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "source": source,
+        "results": len(df),
+        "csv": csv,
+        "filename": filename,
+    })
+
+# ---------------- SCRAPE HISTORY ----------------
+
+if "scrape_history" in st.session_state and st.session_state["scrape_history"]:
+
+    st.divider()
+    st.subheader("Scrape History")
+
+    for i, entry in enumerate(reversed(st.session_state["scrape_history"])):
+        idx = len(st.session_state["scrape_history"]) - 1 - i
+        col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
+
+        with col1:
+            st.text(entry["timestamp"])
+        with col2:
+            st.text(entry["source"])
+        with col3:
+            st.text(f"{entry['results']} leads")
+        with col4:
+            st.download_button(
+                "Download",
+                entry["csv"],
+                entry["filename"],
+                "text/csv",
+                key=f"history_{idx}",
+            )
