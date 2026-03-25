@@ -240,6 +240,7 @@ elif source == "Angi (Angie's List)":
     ], index=42)  # tx default
 
     angi_max = st.number_input("Max results", 1, 1000, 25)
+    st.caption("Note: The Angi actor may scrape more results than requested. Cost is based on what the actor scrapes, not what is displayed.")
 
     cat_slug = angi_category
     city_slug = angi_city.strip().lower().replace(" ", "-")
@@ -481,22 +482,31 @@ if run_clicked:
 
         try:
             progress.progress(10)
+            # Scale timeout: ~30s base + 10s per result requested
+            angi_timeout = min(30 + int(angi_max) * 10, 300)
             run = client.actor(ACTORS[source]).call(
                 run_input={
                     "startUrls": [{"url": angi_url}],
+                    "maxItems": int(angi_max),
                     "maxResults": int(angi_max),
+                    "maxCrawledPages": int(angi_max),
+                    "maxRequestsPerCrawl": int(angi_max) + 5,
                 },
-                timeout_secs=300,
+                timeout_secs=angi_timeout,
+                memory_mbytes=256,
             )
             progress.progress(70)
 
             status = run.get("status", "UNKNOWN")
-            if status != "SUCCEEDED":
+            dataset_id = run.get("defaultDatasetId", "")
+
+            if status == "TIMED-OUT" and dataset_id:
+                st.warning("Actor timed out — showing partial results collected so far.")
+            elif status != "SUCCEEDED":
                 st.error(f"Actor run did not succeed (status={status}).")
                 st.stop()
 
-            dataset_id = run.get("defaultDatasetId", "")
-            items_raw = list(client.dataset(dataset_id).iterate_items())
+            items_raw = list(client.dataset(dataset_id).iterate_items())[:int(angi_max)]
             all_results = [flatten_record(item) for item in items_raw]
             progress.progress(90)
 
