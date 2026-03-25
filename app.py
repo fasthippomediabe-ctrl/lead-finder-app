@@ -41,7 +41,6 @@ from apify_client import ApifyClient
 ACTORS = {
     "Google Business Profile": "compass/crawler-google-places",
     "Angi (Angie's List)": "fatihtahta/angi-scraper-with-contacts",
-    "HomeAdvisor": "alizarin_refrigerator-owner/homeadvisor-scraper",
 }
 
 COUNTRY_DATA = {
@@ -249,39 +248,6 @@ elif source == "Angi (Angie's List)":
     )
     if angi_custom_url and "/companylist/" not in angi_custom_url:
         st.warning("This URL looks like a search page, not a company list page. The scraper needs a URL containing '/companylist/' (e.g. angi.com/companylist/us/tx/austin/plumber.htm)")
-
-# --- HomeAdvisor ---
-elif source == "HomeAdvisor":
-
-    ha_category = st.text_input("Category / Service Type", "General Contractor")
-    ha_city = st.text_input("City", "Austin")
-
-    ha_state = st.selectbox("State", [
-        "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-        "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-        "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-        "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-        "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
-    ], index=42)  # TX default
-
-    cat_slug = ha_category.strip().replace(" ", "-")
-    city_slug = ha_city.strip().replace(" ", "-")
-    ha_auto_url = f"https://www.homeadvisor.com/c.{cat_slug}.{city_slug}.{ha_state}.html"
-
-    st.markdown("---")
-    st.markdown("**Option 1:** Use the auto-generated URL below (may not always match exact category)")
-    st.code(ha_auto_url, language=None)
-
-    st.markdown("**Option 2:** Browse HomeAdvisor for your area, then paste the URL")
-    st.markdown(f"[Browse HomeAdvisor for {ha_city}](https://www.homeadvisor.com/c.{city_slug}.{ha_state}.html)")
-    st.caption("Find the right category page and copy the URL from your browser.")
-
-    ha_custom_url = st.text_input(
-        "Paste URL from HomeAdvisor here (leave blank to use auto-generated URL)",
-        "",
-    )
-    if ha_custom_url and "homeadvisor.com" not in ha_custom_url:
-        st.warning("This doesn't look like a HomeAdvisor URL. Please paste a URL from homeadvisor.com.")
 
 # ---------------- RUN BUTTON ----------------
 
@@ -601,48 +567,6 @@ if run_clicked:
             clean_rows.append(row)
 
         df = pd.DataFrame(clean_rows)
-
-    # ==================== HOMEADVISOR ====================
-    elif source == "HomeAdvisor":
-
-        ha_url = ha_custom_url.strip() if ha_custom_url.strip() else ha_auto_url
-        url_list = [ha_url]
-
-        if not url_list or not url_list[0]:
-            st.warning("Please enter a valid HomeAdvisor URL or fill in category/city/state.")
-            st.stop()
-
-        st.write(f"Scraping: **{url_list[0]}**")
-        progress = st.progress(0)
-
-        try:
-            progress.progress(10)
-            run = client.actor(ACTORS[source]).call(
-                run_input={
-                    "startUrls": [{"url": u} for u in url_list],
-                }
-            )
-            progress.progress(70)
-
-            status = run.get("status", "UNKNOWN")
-            if status != "SUCCEEDED":
-                st.error(f"Actor run did not succeed (status={status}).")
-                st.stop()
-
-            dataset_id = run.get("defaultDatasetId", "")
-            items_raw = list(client.dataset(dataset_id).iterate_items())
-            all_results = [flatten_record(item) for item in items_raw]
-            progress.progress(90)
-
-        except Exception as e:
-            st.error(f"Scraper error: {e}")
-            st.stop()
-
-        if not all_results:
-            st.warning("No results found.")
-            st.stop()
-
-        df = pd.DataFrame(all_results)
 
     # ==================== POST-PROCESSING (ALL SOURCES) ====================
 
