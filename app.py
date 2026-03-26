@@ -183,6 +183,42 @@ COMMON_CONTACT_PATHS = [
     "/about-us",
 ]
 
+# ---------------- AUTO-UPDATE ANGI CATEGORIES ----------------
+
+def fetch_angi_categories():
+    """Scrape Angi companylist pages to discover all available category slugs."""
+    from bs4 import BeautifulSoup
+    categories = set(ANGI_CATEGORIES)  # start with existing
+
+    # Scrape a few state/city pages to find category links
+    sample_pages = [
+        "https://www.angi.com/companylist/us/tx/austin/",
+        "https://www.angi.com/companylist/us/ca/los-angeles/",
+        "https://www.angi.com/companylist/us/ny/new-york/",
+        "https://www.angi.com/companylist/us/fl/miami/",
+        "https://www.angi.com/companylist/us/il/chicago/",
+    ]
+
+    for page_url in sample_pages:
+        try:
+            r = requests.get(page_url, headers=HEADERS, timeout=10)
+            if r.status_code != 200:
+                continue
+            soup = BeautifulSoup(r.text, "html.parser")
+            for link in soup.find_all("a", href=True):
+                href = link["href"]
+                # Category links look like: /companylist/us/tx/austin/plumbing.htm
+                if "/companylist/us/" in href and href.endswith(".htm"):
+                    parts = href.rstrip("/").split("/")
+                    if len(parts) >= 2:
+                        slug = parts[-1].replace(".htm", "")
+                        if slug and slug not in ["index"]:
+                            categories.add(slug)
+        except:
+            continue
+
+    return sorted(categories)
+
 # ---------------- PAGE ----------------
 
 st.set_page_config(page_title="Lead Finder", page_icon="🌍", layout="wide")
@@ -200,6 +236,20 @@ if st.sidebar.button("Logout"):
 st.sidebar.divider()
 
 st.sidebar.markdown("[Check Apify Usage & Billing](https://console.apify.com/billing)")
+
+# Admin-only: Update Angi categories
+if st.session_state.get("role") == "admin":
+    if st.sidebar.button("Update Angi Categories"):
+        with st.sidebar:
+            with st.spinner("Scanning Angi for categories..."):
+                new_cats = fetch_angi_categories()
+                added = set(new_cats) - set(ANGI_CATEGORIES)
+                st.session_state["angi_categories_updated"] = new_cats
+                if added:
+                    st.success(f"Found {len(added)} new categories: {', '.join(sorted(added))}")
+                else:
+                    st.info(f"No new categories found. Total: {len(new_cats)}")
+
 st.sidebar.divider()
 
 # ---------------- SOURCE SELECTOR ----------------
@@ -251,10 +301,14 @@ if source == "Google Business Profile":
 # --- Angi ---
 elif source == "Angi (Angie's List)":
 
+    # Use updated categories if admin fetched new ones
+    active_categories = st.session_state.get("angi_categories_updated", ANGI_CATEGORIES)
+    sorted_cats = sorted(active_categories)
+
     angi_category = st.selectbox(
         "Category / Service Type",
-        ["-- Type my own --"] + sorted(ANGI_CATEGORIES),
-        index=sorted(ANGI_CATEGORIES).index("plumbing") + 1,
+        ["-- Type my own --"] + sorted_cats,
+        index=sorted_cats.index("plumbing") + 1 if "plumbing" in sorted_cats else 1,
     )
     if angi_category == "-- Type my own --":
         angi_category_custom = st.text_input(
