@@ -248,8 +248,6 @@ st.divider()
 
 st.sidebar.markdown(f"[View Scrape History (Google Sheets)](https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/)")
 st.sidebar.divider()
-find_emails = st.sidebar.checkbox("Find emails from websites", True)
-email_scan_limit = st.sidebar.number_input("Max websites to scan for emails", 1, 500, 50)
 
 # Admin-only: Update Angi categories (bottom of sidebar, small text)
 if st.session_state.get("role") == "admin":
@@ -376,6 +374,14 @@ elif source == "Angi (Angie's List)":
     )
     if angi_custom_url and "/companylist/" not in angi_custom_url:
         st.warning("This URL looks like a search page, not a company list page. The scraper needs a URL containing '/companylist/' (e.g. angi.com/companylist/us/tx/austin/plumber.htm)")
+
+# ---------------- EMAIL OPTIONS ----------------
+
+email_col1, email_col2 = st.columns(2)
+with email_col1:
+    find_emails = st.checkbox("Find emails from websites", True)
+with email_col2:
+    email_scan_limit = st.number_input("Max websites to scan for emails", 1, 500, 50)
 
 # ---------------- RUN BUTTON ----------------
 
