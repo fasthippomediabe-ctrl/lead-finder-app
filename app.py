@@ -238,6 +238,75 @@ st.sidebar.divider()
 st.sidebar.markdown("[Check Apify Usage & Billing](https://console.apify.com/billing)")
 st.sidebar.divider()
 
+# Downloadable instructions
+lead_finder_instructions = """ALL-IN-ONE LEAD FINDER - User Guide
+=====================================
+
+STEP 1: Select Lead Source
+- Google Business Profile: Search businesses worldwide via Google Maps
+- Angi (Angie's List): Search US-only service businesses
+
+STEP 2: Configure Search (Google Business Profile)
+- Select a country (US, Canada, UK, Philippines, or type any country)
+- Enter industries (one per line, e.g. "dentist", "plumber", "gym")
+- Select preset cities or type any city worldwide
+- Set max results per search (up to 200)
+- Set rating and review filters (min/max)
+
+STEP 2: Configure Search (Angi)
+- Select a category/service type from the list
+- Enter city and state
+- Set max results (up to 1000)
+- Optionally paste a custom Angi company list URL
+
+STEP 3: Email Options
+- Enable/disable email scraping from business websites
+- Set max websites to scan for emails (default: 50)
+
+STEP 4: Run the Scraper
+- Click "Run Scraper" to start
+- Results show with Opportunity Score (HIGH/MEDIUM/LOW)
+- Duplicate businesses from previous scrapes are flagged
+
+STEP 5: Filter & Download Results
+- Search results by name, address, or category
+- Filter duplicates (New only / Duplicates only)
+- Download as CSV or Excel
+- Results auto-save to Google Sheets
+
+FEATURES:
+- Opportunity scoring based on rating, reviews, and website presence
+- Chain/franchise filtering (excludes Amazon, Walmart, etc.)
+- Email extraction from business websites
+- Duplicate detection across previous scrapes
+- Scrape history with re-download capability
+
+TIPS:
+- Use "Search all available listings" for comprehensive scrapes (uses more credits)
+- Reduce email scan limit for faster results
+- Check Apify billing to monitor credit usage
+- Admin users can sync Angi categories to discover new service types
+"""
+
+with st.sidebar.expander("**How to use**", expanded=False):
+    st.markdown(
+        "1. Select lead source (Google or Angi)\n"
+        "2. Enter industries, cities, and filters\n"
+        "3. Enable email scraping (optional)\n"
+        "4. Click **Run Scraper**\n"
+        "5. Filter results and download CSV/Excel\n"
+        "6. Auto-saved to Google Sheets"
+    )
+    st.download_button(
+        "📄 Download Full Instructions",
+        lead_finder_instructions.encode("utf-8"),
+        "Lead_Finder_Instructions.txt",
+        "text/plain",
+        use_container_width=True,
+    )
+
+st.sidebar.divider()
+
 # ---------------- SOURCE SELECTOR ----------------
 
 source = st.selectbox("Lead Source", list(ACTORS.keys()))
