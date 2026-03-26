@@ -318,6 +318,8 @@ if source == "Google Business Profile":
 # --- Angi ---
 elif source == "Angi (Angie's List)":
 
+    st.caption("Angi is US-only. For international searches, use Google Business Profile.")
+
     # Use updated categories if admin fetched new ones
     active_categories = st.session_state.get("angi_categories_updated", ANGI_CATEGORIES)
     sorted_cats = sorted(active_categories)
