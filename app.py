@@ -55,6 +55,7 @@ SPREADSHEET_ID = "1oksMAwVZNeuf1EIRYz9EXoli9C1pkUF4KYrunRoZQ7A"
 ACTORS = {
     "Google Business Profile": "compass/crawler-google-places",
     "Angi (Angie's List)": "fatihtahta/angi-scraper-with-contacts",
+    "HomeAdvisor (via Angi)": "fortuitous_pirate/angi-home-services-contractors-reviews",
 }
 
 COUNTRY_DATA = {
@@ -303,6 +304,43 @@ elif source == "Angi (Angie's List)":
     )
     if angi_custom_url and "/companylist/" not in angi_custom_url:
         st.warning("This URL looks like a search page, not a company list page. The scraper needs a URL containing '/companylist/' (e.g. angi.com/companylist/us/tx/austin/plumber.htm)")
+
+# --- HomeAdvisor (via Angi) ---
+elif source == "HomeAdvisor (via Angi)":
+
+    st.caption("This uses a cheaper Angi actor ($0.0035/result) that scrapes the same contractor database as HomeAdvisor.")
+
+    ha_category = st.text_input("Category / Service Type", "plumbing")
+    ha_city = st.text_input("City", "austin")
+
+    ha_state = st.selectbox("State", [
+        "al", "ak", "az", "ar", "ca", "co", "ct", "de", "fl", "ga",
+        "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md",
+        "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv", "nh", "nj",
+        "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc",
+        "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy",
+    ], index=42)
+
+    ha_max = st.number_input("Max results", 1, 500, 25)
+
+    ha_cat_slug = ha_category.strip().lower().replace(" ", "-")
+    ha_city_slug = ha_city.strip().lower().replace(" ", "-")
+    ha_auto_url = f"https://www.angi.com/companylist/us/{ha_state}/{ha_city_slug}/{ha_cat_slug}.htm"
+
+    st.markdown("---")
+    st.code(ha_auto_url, language=None)
+
+    st.info(
+        "**Note:** This scraper uses Angi company list URLs (HomeAdvisor and Angi share the same database). "
+        "If no results, try:\n\n"
+        f"1. Browse [angi.com/companylist/us/{ha_state}/](https://www.angi.com/companylist/us/{ha_state}/) to find your city and category\n"
+        "2. Copy the URL and paste it below"
+    )
+
+    ha_custom_url = st.text_input(
+        "Paste Angi/HomeAdvisor URL here (leave blank to use auto-generated URL)",
+        "",
+    )
 
 # ---------------- RUN BUTTON ----------------
 
@@ -717,6 +755,108 @@ if run_clicked:
 
         df = pd.DataFrame(clean_rows)
 
+    # ==================== HOMEADVISOR (via Angi) ====================
+    elif source == "HomeAdvisor (via Angi)":
+
+        ha_url = ha_custom_url.strip() if ha_custom_url.strip() else ha_auto_url
+
+        st.write(f"Scraping HomeAdvisor (via Angi): **{ha_url}**")
+        progress = st.progress(0)
+
+        try:
+            progress.progress(10)
+            run = client.actor(ACTORS[source]).call(
+                run_input={
+                    "startUrls": [{"url": ha_url}],
+                    "maxItems": int(ha_max),
+                },
+                timeout_secs=300,
+            )
+            progress.progress(70)
+
+            status = run.get("status", "UNKNOWN")
+            dataset_id = run.get("defaultDatasetId", "")
+
+            if status == "TIMED-OUT" and dataset_id:
+                st.warning("Actor timed out — showing partial results collected so far.")
+            elif status != "SUCCEEDED":
+                st.error(f"Actor run did not succeed (status={status}).")
+                st.stop()
+
+            items_raw = list(client.dataset(dataset_id).iterate_items())[:int(ha_max)]
+            progress.progress(90)
+
+        except Exception as e:
+            st.error(f"Scraper error: {e}")
+            st.stop()
+
+        if not items_raw:
+            st.warning("No results found.")
+            st.stop()
+
+        # Try to clean up the output into readable columns
+        # This actor may have different output format - handle generically
+        clean_rows = []
+        for item in items_raw:
+            row = {}
+            # Try common field names
+            for key in ["name", "businessName", "business_name", "title"]:
+                if key in item and item[key]:
+                    row["Business Name"] = item[key]
+                    break
+            for key in ["phone", "phoneNumber", "phone_number"]:
+                if key in item and item[key]:
+                    row["Phone"] = item[key]
+                    break
+            for key in ["address", "fullAddress", "street"]:
+                if key in item and item[key]:
+                    row["Address"] = item[key]
+                    break
+            for key in ["website", "websiteUrl", "url"]:
+                if key in item and item[key]:
+                    row["Website"] = item[key]
+                    break
+            for key in ["rating", "overallRating", "averageRating", "totalScore"]:
+                if key in item and item[key]:
+                    try:
+                        row["Rating"] = round(float(item[key]), 1)
+                    except (ValueError, TypeError):
+                        row["Rating"] = item[key]
+                    break
+            for key in ["reviewCount", "reviewsCount", "numberOfReviews"]:
+                if key in item and item[key]:
+                    row["Reviews"] = item[key]
+                    break
+            for key in ["city"]:
+                if key in item and item[key]:
+                    row["City"] = item[key]
+                    break
+            for key in ["state"]:
+                if key in item and item[key]:
+                    row["State"] = item[key]
+                    break
+            for key in ["category", "categories", "serviceType"]:
+                if key in item and item[key]:
+                    val = item[key]
+                    if isinstance(val, list):
+                        row["Category"] = ", ".join(str(v) for v in val[:5])
+                    else:
+                        row["Category"] = str(val)
+                    break
+
+            # If generic parsing didn't find Business Name, flatten the whole record
+            if "Business Name" not in row:
+                flat = flatten_record(item)
+                row = flat
+
+            clean_rows.append(row)
+
+        df = pd.DataFrame(clean_rows)
+
+        # If the output was fully flattened (unknown format), show a note
+        if "Business Name" not in df.columns and len(df.columns) > 0:
+            st.info("This actor returned data in an unfamiliar format. Showing all available columns.")
+
     # ==================== POST-PROCESSING (ALL SOURCES) ====================
 
     df = df.drop_duplicates()
@@ -734,6 +874,8 @@ if run_clicked:
     # Build search info for history
     if source == "Google Business Profile":
         st.session_state["last_search_info"] = f"{industries.split(chr(10))[0]} in {city_list[0] if city_list else 'unknown'}"
+    elif source == "HomeAdvisor (via Angi)":
+        st.session_state["last_search_info"] = f"{ha_category} in {ha_city}"
     else:
         st.session_state["last_search_info"] = f"{angi_category} in {angi_city}"
 
