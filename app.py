@@ -236,20 +236,6 @@ if st.sidebar.button("Logout"):
 st.sidebar.divider()
 
 st.sidebar.markdown("[Check Apify Usage & Billing](https://console.apify.com/billing)")
-
-# Admin-only: Update Angi categories
-if st.session_state.get("role") == "admin":
-    if st.sidebar.button("Update Angi Categories"):
-        with st.sidebar:
-            with st.spinner("Scanning Angi for categories..."):
-                new_cats = fetch_angi_categories()
-                added = set(new_cats) - set(ANGI_CATEGORIES)
-                st.session_state["angi_categories_updated"] = new_cats
-                if added:
-                    st.success(f"Found {len(added)} new categories: {', '.join(sorted(added))}")
-                else:
-                    st.info(f"No new categories found. Total: {len(new_cats)}")
-
 st.sidebar.divider()
 
 # ---------------- SOURCE SELECTOR ----------------
@@ -265,25 +251,56 @@ st.sidebar.divider()
 find_emails = st.sidebar.checkbox("Find emails from websites", True)
 email_scan_limit = st.sidebar.number_input("Max websites to scan for emails", 1, 500, 50)
 
+# Admin-only: Update Angi categories (bottom of sidebar, small text)
+if st.session_state.get("role") == "admin":
+    st.sidebar.divider()
+    if st.sidebar.button("Sync categories", type="secondary", use_container_width=False):
+        with st.sidebar:
+            with st.spinner("Scanning..."):
+                new_cats = fetch_angi_categories()
+                added = set(new_cats) - set(ANGI_CATEGORIES)
+                st.session_state["angi_categories_updated"] = new_cats
+                if added:
+                    st.caption(f"Added {len(added)} new: {', '.join(sorted(added))}")
+                else:
+                    st.caption(f"Up to date ({len(new_cats)} categories)")
+
 # ---------------- SOURCE-SPECIFIC INPUTS ----------------
 
 # --- Google Business Profile ---
 if source == "Google Business Profile":
 
-    country = st.selectbox("Country", list(COUNTRY_DATA.keys()))
-    country_info = COUNTRY_DATA[country]
+    # Country: dropdown with presets + option to type any country
+    country_options = list(COUNTRY_DATA.keys()) + ["-- Other --"]
+    country_selection = st.selectbox("Country", country_options)
 
-    st.info(f"Language: {country_info['language'].upper()} | Currency: {country_info['currency']}")
+    if country_selection == "-- Other --":
+        country = st.text_input("Enter country name", "")
+        language = st.text_input("Search language (e.g. en, es, fr, de, ja)", "en")
+        country_info = {"language": language, "cities": []}
+    else:
+        country = country_selection
+        country_info = COUNTRY_DATA[country]
+
+    if country_info.get("language"):
+        st.info(f"Language: {country_info['language'].upper()}")
 
     industries = st.text_area("Industries (one per line)", "dentist\nplumber\ngym")
 
-    selected_cities = st.multiselect(
-        "Cities",
-        country_info["cities"],
-        default=country_info["cities"][:1],
-    )
+    # Cities: show presets if available, plus free text for any city
+    if country_info.get("cities"):
+        selected_cities = st.multiselect(
+            "Preset Cities (optional)",
+            country_info["cities"],
+            default=country_info["cities"][:1],
+        )
+    else:
+        selected_cities = []
 
-    custom_city = st.text_input("Optional custom city/location", "")
+    custom_cities = st.text_area(
+        "Cities (one per line — type any city worldwide)",
+        "" if selected_cities else "Austin, Texas",
+    )
 
     gbp_search_all = st.checkbox("Search all available listings", False)
     if gbp_search_all:
@@ -561,8 +578,10 @@ if run_clicked:
 
         industry_list = [i.strip() for i in industries.split("\n") if i.strip()]
         city_list = list(selected_cities)
-        if custom_city.strip():
-            city_list.append(custom_city.strip())
+        # Add custom typed cities
+        for c in custom_cities.split("\n"):
+            if c.strip():
+                city_list.append(c.strip())
         city_list = list(dict.fromkeys(city_list))
 
         total_jobs = len(industry_list) * len(city_list)
