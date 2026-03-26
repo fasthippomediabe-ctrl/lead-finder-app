@@ -236,6 +236,7 @@ if st.sidebar.button("Logout"):
 st.sidebar.divider()
 
 st.sidebar.markdown("[Check Apify Usage & Billing](https://console.apify.com/billing)")
+st.sidebar.markdown(f"[View Scrape History (Google Sheets)](https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/)")
 st.sidebar.divider()
 
 # Downloadable instructions
@@ -305,23 +306,10 @@ with st.sidebar.expander("**How to use**", expanded=False):
         use_container_width=True,
     )
 
-st.sidebar.divider()
-
-# ---------------- SOURCE SELECTOR ----------------
-
-source = st.selectbox("Lead Source", list(ACTORS.keys()))
-
-st.divider()
-
-# ---------------- SHARED: EMAIL OPTIONS ----------------
-
-st.sidebar.markdown(f"[View Scrape History (Google Sheets)](https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/)")
-st.sidebar.divider()
-
-# Admin-only: Update Angi categories (bottom of sidebar, small text)
+# Admin-only: Sync Angi categories
 if st.session_state.get("role") == "admin":
     st.sidebar.divider()
-    if st.sidebar.button("Sync categories", type="secondary", use_container_width=False):
+    if st.sidebar.button("Sync Categories", type="secondary", use_container_width=False):
         with st.sidebar:
             with st.spinner("Scanning..."):
                 new_cats = fetch_angi_categories()
@@ -331,6 +319,12 @@ if st.session_state.get("role") == "admin":
                     st.caption(f"Added {len(added)} new: {', '.join(sorted(added))}")
                 else:
                     st.caption(f"Up to date ({len(new_cats)} categories)")
+
+# ---------------- SOURCE SELECTOR ----------------
+
+source = st.selectbox("Lead Source", list(ACTORS.keys()))
+
+st.divider()
 
 # ---------------- SOURCE-SPECIFIC INPUTS ----------------
 
