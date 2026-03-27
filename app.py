@@ -459,20 +459,6 @@ with st.sidebar.expander("**How to use**", expanded=False):
         use_container_width=True,
     )
 
-# Admin-only: Sync Angi categories
-if st.session_state.get("role") == "admin":
-    st.sidebar.divider()
-    if st.sidebar.button("Sync Categories", type="secondary", use_container_width=False):
-        with st.sidebar:
-            with st.spinner("Scanning..."):
-                new_cats = fetch_angi_categories()
-                added = set(new_cats) - set(ANGI_CATEGORIES)
-                st.session_state["angi_categories_updated"] = new_cats
-                if added:
-                    st.caption(f"Added {len(added)} new: {', '.join(sorted(added))}")
-                else:
-                    st.caption(f"Up to date ({len(new_cats)} categories)")
-
 # ---------------- SOURCE SELECTOR ----------------
 
 source = st.selectbox("Lead Source", list(ACTORS.keys()))
@@ -531,6 +517,19 @@ if source == "Google Business Profile":
 elif source == "Angi (Angie's List)":
 
     st.caption("Angi is US-only. For international searches, use Google Business Profile.")
+
+    # Admin-only: Sync Angi categories
+    if st.session_state.get("role") == "admin":
+        if st.sidebar.button("Sync Categories", type="secondary", use_container_width=False):
+            with st.sidebar:
+                with st.spinner("Scanning..."):
+                    new_cats = fetch_angi_categories()
+                    added = set(new_cats) - set(ANGI_CATEGORIES)
+                    st.session_state["angi_categories_updated"] = new_cats
+                    if added:
+                        st.caption(f"Added {len(added)} new: {', '.join(sorted(added))}")
+                    else:
+                        st.caption(f"Up to date ({len(new_cats)} categories)")
 
     active_categories = st.session_state.get("angi_categories_updated", ANGI_CATEGORIES)
     sorted_cats = sorted(active_categories)
@@ -1169,7 +1168,7 @@ if "scrape_history" in st.session_state and st.session_state["scrape_history"]:
 # ---------------- VIEW PAST SCRAPES FROM GOOGLE SHEETS ----------------
 
 st.divider()
-st.subheader("Past Scrapes (From Google Sheets)")
+st.subheader("Past Scrapes (from Google Sheets)")
 
 def load_past_scrapes():
     gc = get_gsheet_client()
