@@ -1169,7 +1169,7 @@ if "scrape_history" in st.session_state and st.session_state["scrape_history"]:
 # ---------------- VIEW PAST SCRAPES FROM GOOGLE SHEETS ----------------
 
 st.divider()
-st.subheader("Past Scrapes (from Google Sheets)")
+st.subheader("Past Scrapes (From Google Sheets)")
 
 def load_past_scrapes():
     gc = get_gsheet_client()
