@@ -1193,38 +1193,51 @@ history_data, sh = load_past_scrapes()
 if history_data and len(history_data) > 1:
     header = history_data[0]
     rows = history_data[1:]
+    rows.reverse()  # newest first
 
-    # Show history table (handle duplicate column names)
-    unique_header = []
-    seen = {}
-    for h in header:
-        if h in seen:
-            seen[h] += 1
-            unique_header.append(f"{h}_{seen[h]}")
-        else:
-            seen[h] = 0
-            unique_header.append(h)
-    history_df = pd.DataFrame(rows, columns=unique_header)
-    st.dataframe(history_df, use_container_width=True, hide_index=True)
+    st.caption(f"Showing {len(rows)} past scrapes")
 
-    # Let user select a past scrape to view
-    tab_names = [row[4] if len(row) > 4 else row[0] for row in rows]
-    tab_names.reverse()  # newest first
+    for i, row in enumerate(rows):
+        timestamp = row[0] if len(row) > 0 else ""
+        src = row[1] if len(row) > 1 else ""
+        search = row[2] if len(row) > 2 else ""
+        count = row[3] if len(row) > 3 else ""
+        tab_name = row[4] if len(row) > 4 else ""
 
-    selected_tab = st.selectbox("Select a past scrape to view", ["-- Select --"] + tab_names, key="past_scrape_select")
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            st.markdown(f"**{src}** — {search}")
+            st.caption(f"{timestamp} | {count} results")
+        with col2:
+            if st.button("View", key=f"view_past_{i}"):
+                st.session_state["view_past_tab"] = tab_name
+        st.markdown("---")
 
-    if selected_tab != "-- Select --" and sh:
+    # Display selected past scrape
+    if "view_past_tab" in st.session_state and st.session_state["view_past_tab"] and sh:
+        selected_tab = st.session_state["view_past_tab"]
         try:
             ws = sh.worksheet(selected_tab)
             past_data = ws.get_all_values()
             if past_data:
-                past_df = pd.DataFrame(past_data[1:], columns=past_data[0])
-                st.success(f"Loaded **{selected_tab}** — {len(past_df)} results")
+                # Handle duplicate column names
+                past_header = past_data[0]
+                unique_past_header = []
+                seen_cols = {}
+                for h in past_header:
+                    if h in seen_cols:
+                        seen_cols[h] += 1
+                        unique_past_header.append(f"{h}_{seen_cols[h]}")
+                    else:
+                        seen_cols[h] = 0
+                        unique_past_header.append(h)
+                past_df = pd.DataFrame(past_data[1:], columns=unique_past_header)
+
+                st.success(f"Viewing: **{selected_tab}** — {len(past_df)} results")
                 st.dataframe(past_df, use_container_width=True, hide_index=True)
 
-                # Download options for past scrape
                 past_csv = past_df.to_csv(index=False).encode("utf-8")
-                past_col1, past_col2 = st.columns(2)
+                past_col1, past_col2, past_col3 = st.columns([2, 2, 1])
                 with past_col1:
                     st.download_button(
                         "Download CSV",
@@ -1259,6 +1272,10 @@ if history_data and len(history_data) > 1:
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         key="past_excel_dl",
                     )
+                with past_col3:
+                    if st.button("Close", key="close_past_view"):
+                        del st.session_state["view_past_tab"]
+                        st.rerun()
             else:
                 st.warning("This tab is empty.")
         except Exception as e:
