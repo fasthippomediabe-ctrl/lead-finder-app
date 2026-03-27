@@ -597,7 +597,8 @@ with email_col2:
 
 # ---------------- RUN BUTTON ----------------
 
-run_clicked = st.button("🚀 Run Scraper")
+run_clicked = st.button("🚀 Run Scraper", use_container_width=True)
+st.caption("Each scrape uses Apify credits (~$0.04-$0.10 per 10 results). Double-check your inputs before running.")
 
 # ---------------- GOOGLE SHEETS ----------------
 
