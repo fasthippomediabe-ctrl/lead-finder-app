@@ -1195,8 +1195,19 @@ if history_data and len(history_data) > 1:
     rows = history_data[1:]
     rows.reverse()  # newest first
 
-    with st.expander(f"**Past Scrapes ({len(rows)})**", expanded=False):
-        for i, row in enumerate(rows):
+    # Filter rows by current source
+    filtered_rows = []
+    for row in rows:
+        src = row[1] if len(row) > 1 else ""
+        if source == "Google Business Profile" and "Google" in src:
+            filtered_rows.append(row)
+        elif source == "Angi (Angie's List)" and "Angi" in src:
+            filtered_rows.append(row)
+
+    with st.expander(f"**Past {source} Scrapes ({len(filtered_rows)})**", expanded=False):
+        if not filtered_rows:
+            st.caption(f"No past {source} scrapes found.")
+        for i, row in enumerate(filtered_rows):
             timestamp = row[0] if len(row) > 0 else ""
             src = row[1] if len(row) > 1 else ""
             search = row[2] if len(row) > 2 else ""
