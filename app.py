@@ -1194,8 +1194,17 @@ if history_data and len(history_data) > 1:
     header = history_data[0]
     rows = history_data[1:]
 
-    # Show history table
-    history_df = pd.DataFrame(rows, columns=header)
+    # Show history table (handle duplicate column names)
+    unique_header = []
+    seen = {}
+    for h in header:
+        if h in seen:
+            seen[h] += 1
+            unique_header.append(f"{h}_{seen[h]}")
+        else:
+            seen[h] = 0
+            unique_header.append(h)
+    history_df = pd.DataFrame(rows, columns=unique_header)
     st.dataframe(history_df, use_container_width=True, hide_index=True)
 
     # Let user select a past scrape to view
