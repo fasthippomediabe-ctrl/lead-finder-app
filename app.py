@@ -1195,23 +1195,20 @@ if history_data and len(history_data) > 1:
     rows = history_data[1:]
     rows.reverse()  # newest first
 
-    st.caption(f"Showing {len(rows)} past scrapes")
+    with st.expander(f"**Past Scrapes ({len(rows)})**", expanded=False):
+        for i, row in enumerate(rows):
+            timestamp = row[0] if len(row) > 0 else ""
+            src = row[1] if len(row) > 1 else ""
+            search = row[2] if len(row) > 2 else ""
+            count = row[3] if len(row) > 3 else ""
+            tab_name = row[4] if len(row) > 4 else ""
 
-    for i, row in enumerate(rows):
-        timestamp = row[0] if len(row) > 0 else ""
-        src = row[1] if len(row) > 1 else ""
-        search = row[2] if len(row) > 2 else ""
-        count = row[3] if len(row) > 3 else ""
-        tab_name = row[4] if len(row) > 4 else ""
-
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            st.markdown(f"**{src}** — {search}")
-            st.caption(f"{timestamp} | {count} results")
-        with col2:
-            if st.button("View", key=f"view_past_{i}"):
-                st.session_state["view_past_tab"] = tab_name
-        st.markdown("---")
+            col1, col2 = st.columns([5, 1])
+            with col1:
+                st.markdown(f"**{src}** — {search}  \n<small>{timestamp} | {count} results</small>", unsafe_allow_html=True)
+            with col2:
+                if st.button("View", key=f"view_past_{i}"):
+                    st.session_state["view_past_tab"] = tab_name
 
     # Display selected past scrape
     if "view_past_tab" in st.session_state and st.session_state["view_past_tab"] and sh:
