@@ -120,7 +120,7 @@ def load_users_from_sheets():
         import gspread
         creds_dict = dict(st.secrets["gcp_service_account"])
         gc = gspread.service_account_from_dict(creds_dict)
-        sh = gc.open_by_key("11Dxuw2zmfogqeXEMWzYMqSr9zGGjLORvzkCK1k01plU")
+        sh = gc.open_by_key("11Dxuw2zmfogqeXEMWzYMqSr9zGGjLORvzkCK1k01pIU")
 
         # Try to find Users sheet
         try:
