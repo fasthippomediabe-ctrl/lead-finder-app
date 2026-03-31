@@ -112,10 +112,7 @@ st.markdown("""
 
 # ---------------- USER ACCOUNTS ----------------
 
-DEFAULT_USERS = {
-    "boss": {"password": "leadfinder123", "role": "admin"},
-    "bryan": {"password": "bryan2024", "role": "admin"},
-}
+DEFAULT_USERS = {}
 
 def load_users_from_sheets():
     """Load users from Google Sheets 'Users' tab (shared across all FHM apps)."""
