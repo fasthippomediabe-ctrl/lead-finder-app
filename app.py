@@ -156,7 +156,8 @@ def check_login():
     def login_form():
         st.markdown("""
         <div style="text-align:center; padding: 2rem 0;">
-            <h2 style="color: #03045E;">🦛 Fast Hippo Media</h2>
+            <img src="https://fasthippomedia.com/wp-content/uploads/2024/12/SVG-File.png" alt="FHM" style="height:60px; margin-bottom:8px;"><br>
+            <h2 style="color: #03045E;">Fast Hippo Media</h2>
             <p style="color: #666;">Lead Finder Tool</p>
         </div>
         """, unsafe_allow_html=True)
@@ -377,7 +378,8 @@ def fetch_angi_categories():
 
 st.markdown("""
 <div class="fhm-header">
-    <h1>🦛 Lead Finder</h1>
+    <img src="https://fasthippomedia.com/wp-content/uploads/2024/12/SVG-File.png" alt="FHM" style="height:40px; vertical-align:middle; margin-right:10px;">
+    <h1 style="display:inline; vertical-align:middle;">Lead Finder</h1>
     <p>Powered by Fast Hippo Media — Transform Your Digital Marketing</p>
 </div>
 """, unsafe_allow_html=True)
@@ -386,7 +388,7 @@ st.markdown("""
 
 st.sidebar.markdown("""
 <div style="text-align:center; padding: 0.5rem 0 1rem 0;">
-    <span style="font-size: 1.5rem;">🦛</span><br>
+    <img src="https://fasthippomedia.com/wp-content/uploads/2024/12/SVG-File.png" alt="FHM" style="height:40px; margin-bottom:6px;"><br>
     <strong style="font-size: 1.1rem;">Fast Hippo Media</strong><br>
     <span style="font-size: 0.75rem; opacity: 0.7;">Lead Finder Tool</span>
 </div>
@@ -1334,7 +1336,7 @@ if history_data and len(history_data) > 1:
 
 st.markdown("""
 <div class="fhm-footer">
-    <strong>🦛 Fast Hippo Media</strong> — Award Winning Digital Marketing Agency<br>
+    <strong>Fast Hippo Media</strong> — Award Winning Digital Marketing Agency<br>
     <a href="https://fasthippomedia.com" target="_blank">fasthippomedia.com</a>
 </div>
 """, unsafe_allow_html=True)
