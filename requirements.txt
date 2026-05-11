@@ -1,7 +1,1 @@
 streamlit
-pandas
-apify-client
-requests
-gspread
-openpyxl
-beautifulsoup4
